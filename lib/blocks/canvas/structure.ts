@@ -1,0 +1,115 @@
+import { block, P_PERIOD, P_PIPS } from "../_factory";
+import type { BlockDefinition } from "../types";
+
+// ── Market Structure (12) · all P3 planned in V1 ─────────────────────
+
+export const STRUCTURE_BLOCKS: BlockDefinition[] = [
+  block({
+    id: "struct.swingHigherHigh",
+    family: "structure", subcategory: "swings", name: "Swing: HH / HL",
+    short: "Require confirmed HH + HL for long.",
+    plan: "creator", priority: "P3", complexity: "advanced", status: "planned",
+    affects: ["filter"], tags: ["swings", "structure"],
+    params: [P_PERIOD("lookback", "Swing lookback", 10, 3)],
+  }),
+  block({
+    id: "struct.swingLowerLow",
+    family: "structure", subcategory: "swings", name: "Swing: LL / LH",
+    short: "Require confirmed LL + LH for short.",
+    plan: "creator", priority: "P3", complexity: "advanced", status: "planned",
+    affects: ["filter"], tags: ["swings", "structure"],
+    params: [P_PERIOD("lookback", "Swing lookback", 10, 3)],
+  }),
+  block({
+    id: "struct.bosBreakOfStructure",
+    family: "structure", subcategory: "structure", name: "Break of Structure",
+    short: "Confirmed BOS on swing high / low.",
+    plan: "creator", priority: "P3", complexity: "advanced", status: "planned",
+    affects: ["filter"], tags: ["smc", "bos"],
+    params: [P_PERIOD("lookback", "Swing lookback", 20, 5)],
+  }),
+  block({
+    id: "struct.chochChange",
+    family: "structure", subcategory: "structure", name: "Change of Character",
+    short: "CHoCH: bearish→bullish structure (or vice versa).",
+    plan: "creator", priority: "P3", complexity: "advanced", status: "planned",
+    affects: ["filter"], tags: ["smc", "choch"],
+    params: [P_PERIOD("lookback", "Swing lookback", 20, 5)],
+  }),
+  block({
+    id: "struct.fractalFilter",
+    family: "structure", subcategory: "fractals", name: "Bill Williams Fractal",
+    short: "Require a fresh fractal within N bars.",
+    plan: "pro", priority: "P3", complexity: "intermediate", status: "planned",
+    affects: ["filter"], mt5: true, tags: ["fractals"],
+    params: [P_PERIOD("maxAge", "Max age (bars)", 10, 1)],
+  }),
+  block({
+    id: "struct.supportResistance",
+    family: "structure", subcategory: "levels", name: "S/R Proximity",
+    short: "Block entries within X pips of S/R.",
+    plan: "creator", priority: "P3", complexity: "advanced", status: "planned",
+    affects: ["filter"], tags: ["sr"],
+    params: [P_PIPS("proximityPips", "Proximity", 15)],
+  }),
+  block({
+    id: "struct.pivotPoint",
+    family: "structure", subcategory: "levels", name: "Pivot Point Zones",
+    short: "Price must be at / above / below a specific pivot.",
+    plan: "pro", priority: "P2", complexity: "intermediate", status: "planned",
+    affects: ["filter"], tags: ["pivots"],
+    params: [
+      { key: "pivotType", label: "Pivot type", kind: "select", default: "classic",
+        options: [{ value: "classic", label: "Classic" }, { value: "camarilla", label: "Camarilla" }, { value: "fibonacci", label: "Fibonacci" }] },
+      { key: "zone", label: "Required zone", kind: "select", default: "pivot",
+        options: [{ value: "pivot", label: "Near pivot" }, { value: "r1", label: "Above R1" }, { value: "s1", label: "Below S1" }] },
+    ],
+  }),
+  block({
+    id: "struct.supplyDemandZone",
+    family: "structure", subcategory: "zones", name: "Supply / Demand Zones",
+    short: "Respect recent supply / demand rectangles.",
+    plan: "creator", priority: "P3", complexity: "advanced", status: "planned",
+    affects: ["filter"], tags: ["smc", "zones"],
+    params: [P_PERIOD("lookback", "Lookback bars", 100, 20)],
+  }),
+  block({
+    id: "struct.orderBlock",
+    family: "structure", subcategory: "smc", name: "Order Block Filter",
+    short: "ICT-style order-block proximity.",
+    plan: "creator", priority: "P3", complexity: "advanced", status: "planned",
+    affects: ["filter"], tags: ["smc", "ict"],
+    params: [P_PERIOD("lookback", "Lookback bars", 50, 10)],
+  }),
+  block({
+    id: "struct.fairValueGap",
+    family: "structure", subcategory: "smc", name: "Fair Value Gap",
+    short: "Price must have revisited a detected FVG.",
+    plan: "creator", priority: "P3", complexity: "advanced", status: "planned",
+    affects: ["filter"], tags: ["smc", "fvg"],
+    params: [P_PERIOD("lookback", "Lookback bars", 50, 10)],
+  }),
+  block({
+    id: "struct.roundNumber",
+    family: "structure", subcategory: "levels", name: "Round-Number Proximity",
+    short: "Trade within / outside X pips of round numbers.",
+    plan: "pro", priority: "P3", complexity: "basic", status: "planned",
+    affects: ["filter"], tags: ["psychological"],
+    params: [
+      P_PIPS("proximityPips", "Proximity", 10),
+      { key: "mode", label: "Mode", kind: "select", default: "avoid",
+        options: [{ value: "avoid", label: "Avoid round numbers" }, { value: "require", label: "Require round numbers" }] },
+    ],
+  }),
+  block({
+    id: "struct.priorDayExtreme",
+    family: "structure", subcategory: "levels", name: "Prior-Day High / Low",
+    short: "Price above / below prior day's extreme.",
+    plan: "pro", priority: "P2", complexity: "intermediate", status: "planned",
+    affects: ["filter"], tags: ["day-structure"],
+    params: [
+      { key: "side", label: "Required side", kind: "select", default: "above-high",
+        options: [{ value: "above-high", label: "Above prior-day high" }, { value: "below-low", label: "Below prior-day low" }] },
+    ],
+  }),
+];

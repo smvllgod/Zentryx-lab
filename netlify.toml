@@ -1,0 +1,24 @@
+[build]
+  command = "npm run build"
+  publish = "out"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[functions."ai-chat"]
+  # 60s is enough for multi-turn Claude conversations; Netlify free-tier
+  # max is 10s, but the "synchronous streaming" mode we use runs under that.
+  timeout = 60
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
