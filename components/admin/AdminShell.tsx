@@ -15,16 +15,24 @@ interface Props {
 }
 
 export function AdminShell({ title, subtitle, actions, children }: Props) {
-  const { ready, user } = useAuth();
-  const { role } = useIsAdmin();
+  const { ready: sessionReady, user } = useAuth();
+  const { ready: roleReady, role } = useIsAdmin();
   const router = useRouter();
 
+  // Guard only after BOTH session and profile are resolved. `roleReady`
+  // stays false while the profile is still being fetched — prevents a
+  // race where a signed-in admin gets redirected to /overview in the
+  // brief window between session-load and profile-load.
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
-    if (!ready) return;
-    if (!user) router.replace("/sign-in?returnTo=/admin");
-    else if (!role) router.replace("/overview");
-  }, [ready, user, role, router]);
+    if (!sessionReady) return;
+    if (!user) {
+      router.replace("/sign-in?returnTo=/admin");
+      return;
+    }
+    if (!roleReady) return;      // profile still loading — wait
+    if (!role) router.replace("/overview");
+  }, [sessionReady, user, roleReady, role, router]);
 
   if (!isSupabaseConfigured()) {
     return (
@@ -37,7 +45,7 @@ export function AdminShell({ title, subtitle, actions, children }: Props) {
     );
   }
 
-  if (!ready || !user) {
+  if (!sessionReady || !user || !roleReady) {
     return <div className="min-h-screen flex items-center justify-center text-sm text-gray-400">Loading…</div>;
   }
   if (!role) {

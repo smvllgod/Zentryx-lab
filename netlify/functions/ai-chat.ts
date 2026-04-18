@@ -228,7 +228,10 @@ export default async (req: Request, _ctx: Context) => {
   try {
     const response = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 2048,
+      // Smaller max_tokens keeps each Claude turn fast, which matters because
+      // Netlify free-tier sync functions cap around 10s. Tool-heavy turns rarely
+      // need more than ~800 tokens of assistant text.
+      max_tokens: 1200,
       system: [
         // Cached: stable across turns, pays per-request only when changed
         { type: "text", text: staticSystem, cache_control: { type: "ephemeral" } },

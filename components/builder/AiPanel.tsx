@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   Sparkles,
   Send,
@@ -245,8 +247,60 @@ function MessageBubble({ m }: { m: UiMessage }) {
     if (!text) return null;
     return (
       <div className="flex justify-start">
-        <div className="max-w-[88%] rounded-2xl rounded-tl-sm bg-gray-100 text-gray-900 px-3.5 py-2 text-sm leading-snug whitespace-pre-wrap">
-          {text}
+        <div className="max-w-[88%] rounded-2xl rounded-tl-sm bg-gray-100 text-gray-900 px-3.5 py-2 text-sm leading-snug zx-md">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            // Override the default block elements with chat-friendly styling.
+            // No `prose` class because we don't ship the typography plugin.
+            components={{
+              p: ({ children }) => <p className="my-1 first:mt-0 last:mb-0">{children}</p>,
+              h1: ({ children }) => <h3 className="mt-3 mb-1 text-[13px] font-700">{children}</h3>,
+              h2: ({ children }) => <h3 className="mt-3 mb-1 text-[13px] font-700">{children}</h3>,
+              h3: ({ children }) => <h4 className="mt-2.5 mb-1 text-[12px] font-700">{children}</h4>,
+              h4: ({ children }) => <h4 className="mt-2 mb-0.5 text-[12px] font-700">{children}</h4>,
+              ul: ({ children }) => <ul className="my-1 ml-4 list-disc space-y-0.5">{children}</ul>,
+              ol: ({ children }) => <ol className="my-1 ml-4 list-decimal space-y-0.5">{children}</ol>,
+              li: ({ children }) => <li className="leading-snug">{children}</li>,
+              code: ({ children, className }) => {
+                const isBlock = className?.includes("language-");
+                if (isBlock) {
+                  return (
+                    <pre className="my-2 overflow-x-auto rounded-lg bg-gray-900 text-gray-100 text-[11px] p-2.5">
+                      <code>{children}</code>
+                    </pre>
+                  );
+                }
+                return (
+                  <code className="rounded bg-gray-200/70 px-1 py-0.5 text-[11.5px] font-mono">
+                    {children}
+                  </code>
+                );
+              },
+              strong: ({ children }) => <strong className="font-700 text-gray-900">{children}</strong>,
+              em: ({ children }) => <em className="italic text-gray-700">{children}</em>,
+              a: ({ href, children }) => (
+                <a href={href} target="_blank" rel="noreferrer" className="text-emerald-700 underline">
+                  {children}
+                </a>
+              ),
+              blockquote: ({ children }) => (
+                <blockquote className="my-2 border-l-2 border-emerald-200 pl-2 text-gray-600">
+                  {children}
+                </blockquote>
+              ),
+              table: ({ children }) => (
+                <div className="my-2 overflow-x-auto">
+                  <table className="text-[11px] border-collapse">{children}</table>
+                </div>
+              ),
+              thead: ({ children }) => <thead className="bg-gray-200/60">{children}</thead>,
+              th: ({ children }) => <th className="border border-gray-300 px-2 py-1 text-left font-600">{children}</th>,
+              td: ({ children }) => <td className="border border-gray-200 px-2 py-1 align-top">{children}</td>,
+              hr: () => <hr className="my-2 border-gray-200" />,
+            }}
+          >
+            {text}
+          </ReactMarkdown>
         </div>
       </div>
     );
@@ -308,29 +362,71 @@ async function runAgenticLoop(
   if (!accessToken) throw new Error("Not signed in.");
 
   // Safety rail — prevent infinite loops if the model misbehaves.
-  const MAX_STEPS = 12;
+  // 40 lets the AI plan a multi-node strategy + fix validation + reconnect
+  // edges in a single turn; complex grids hit ~25 round-trips.
+  const MAX_STEPS = 40;
   for (let step = 0; step < MAX_STEPS; step++) {
-    const res = await fetch("/.netlify/functions/ai-chat", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({
-        messages: history,
-        graph: graphRef.current,
-        nodeTypes: opts.nodeTypes,
-        strategyId: opts.strategyId,
-      }),
-    });
+    let data: AiChatResponse | null = null;
+    let lastErr: string | null = null;
 
-    const data = (await res.json()) as AiChatResponse;
+    // Retry once on transient failures (Netlify cold start, dropped TCP,
+    // HTML error page from a function timeout, etc.). Two attempts is
+    // enough — anything more is a real outage and the user should retry.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const res = await fetch("/.netlify/functions/ai-chat", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            messages: history,
+            graph: graphRef.current,
+            nodeTypes: opts.nodeTypes,
+            strategyId: opts.strategyId,
+          }),
+        });
+        const ct = res.headers.get("content-type") ?? "";
+        const raw = await res.text();
+        if (!ct.includes("application/json")) {
+          // Function crashed / timed out → Netlify served an HTML error page.
+          // Parsing that as JSON would throw the cryptic "Unexpected token '<'"
+          // message the user saw. Surface a clean error instead.
+          throw new Error(
+            res.status === 504 || res.status === 408
+              ? "AI request timed out (Netlify limit). Try a smaller/simpler request, or split it into steps."
+              : `Server returned a non-JSON response (status ${res.status}). It usually means the function timed out.`,
+          );
+        }
+        data = JSON.parse(raw) as AiChatResponse;
+        break;
+      } catch (err) {
+        lastErr = (err as Error).message;
+        if (attempt === 0) {
+          // Brief backoff then retry once
+          await new Promise((r) => setTimeout(r, 500));
+          continue;
+        }
+      }
+    }
+
+    if (!data) {
+      setUi((m) => [
+        ...m,
+        {
+          kind: "error",
+          text: lastErr ?? "AI request failed. Try again.",
+        },
+      ]);
+      return;
+    }
     if (!data.ok) {
       setUi((m) => [
         ...m,
         {
           kind: "error",
-          text: data.message,
+          text: data!.message,
           upgradeTo: (data as { upgradeTo?: "pro" | "creator" }).upgradeTo,
         },
       ]);
