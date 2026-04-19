@@ -134,11 +134,40 @@ const TOOLS: Anthropic.Tool[] = [
   {
     name: "done",
     description:
-      "Signal that you have finished. Pass a final 1-3 sentence summary for the user.",
+      "Signal that you have finished applying changes. Always end multi-step responses with this tool. The UI renders your input as a rich summary card, so be generous with the structured fields — this is the only place the user reads a clean recap of what you did. Aim for specific, scannable bullets (short phrases, not paragraphs).",
     input_schema: {
       type: "object",
-      properties: { summary: { type: "string" } },
-      required: ["summary"],
+      properties: {
+        summary: {
+          type: "string",
+          description:
+            'One-sentence headline (under 120 chars) describing the end result. Example: "Built a USDJPY M5 scalper with EMA cross entry, 3 filters, and ATR-based exits."',
+        },
+        whatChanged: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            'Concrete bullets — what you added, modified, or removed in this turn. One idea per bullet, under 100 chars each. Example: ["Added EMA 8/21 cross entry (long + short)", "Wired risk_fixed_lot at 0.10 lots", "Renamed strategy to \'USDJPY Scalper Pro\'"]. Don\'t invent items to pad the list — keep it to what actually changed.',
+        },
+        strategyShape: {
+          type: "string",
+          description:
+            'Optional 1-2 sentence plain-language description of the strategy\'s runtime behaviour. Example: "Enters on EMA cross during London session, sizes 1% risk on ATR-based stops, trails with break-even after +1R." Omit for pure metadata / fix-only turns.',
+        },
+        nextSteps: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            'Two to four concrete suggestions the user might do next. Each under 100 chars. Example: ["Validate and preview the MQL5 source", "Backtest on EURUSD M5 2023-2024", "Add a news filter if you want to avoid NFP"]. Prioritise what is meaningful for this strategy — avoid generic tips.',
+        },
+        warnings: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            'Optional list of caveats, trade-offs, or gotchas specific to this strategy. Example: ["Magic number shared with existing EAs will conflict — consider bumping", "No news filter — be cautious around NFP"]. Omit if nothing warrants attention.',
+        },
+      },
+      required: ["summary", "whatChanged", "nextSteps"],
     },
   },
 ];
@@ -365,9 +394,19 @@ ${nodeTypes.join(", ")}
 • Be concise — the user is looking at their graph, not reading a textbook.
 • Always call tools when the user asks for a change; don't just describe it.
 • When the user asks for advice without a mutation, give a clear recommendation and optionally call add_node/connect_nodes to execute it.
-• Finish every multi-step response with the "done" tool, passing a 1-3 sentence summary.
 • If you detect errors (validation diagnostics), call list_validation first, then fix.
 • If a node_type isn't in the list, don't invent one — tell the user.
+
+── Ending every multi-step response — call "done" with a rich recap
+Every turn that makes changes MUST end with the "done" tool. This is the user's main debrief — the UI renders your input as a structured card, so invest real effort here:
+
+• summary (required) — one-sentence headline. Specific about what the strategy IS now (symbol, timeframe, core idea), not "I made changes."
+• whatChanged (required) — scannable bullets of actual mutations this turn. One idea per bullet, under 100 chars. Past tense, concrete. Bad: "Improved the strategy." Good: "Added EMA 8/21 cross entry", "Wired risk_fixed_lot at 0.10 lots".
+• strategyShape (optional) — 1-2 sentences in plain language on HOW the strategy trades. Skip for fix-only / metadata-only turns.
+• nextSteps (required) — 2-4 specific follow-ups tailored to THIS strategy. Bad: "Test it." Good: "Backtest on EURUSD M5 2023-2024", "Add a news filter before NFP".
+• warnings (optional) — caveats the user should know about. Omit if nothing warrants attention.
+
+Quality bar: if your done output could have come from a different strategy, it's not specific enough. Reference the actual symbol, timeframe, nodes, and intent.
 
 ── Style
 Direct, pragmatic, zero fluff. Use second person ("you"). Call the user's strategy "your strategy".`;

@@ -21,13 +21,17 @@ import {
   Check,
   ChevronLeft,
   Square,
+  ListChecks,
+  Compass,
+  Lightbulb,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth/context";
 import { getSupabase } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/toast";
 import { NODE_DEFINITIONS } from "@/lib/strategies/nodes";
-import { executeTool, extractLastAssistantText } from "@/lib/ai/tools";
+import { executeTool, extractLastAssistantText, type DoneSummary } from "@/lib/ai/tools";
 import {
   deleteConversation,
   listConversations,
@@ -68,6 +72,7 @@ type UiMessage =
   | { kind: "user"; text: string }
   | { kind: "assistant"; blocks: AiContentBlock[] }
   | { kind: "tool"; label: string; status: "running" | "ok" | "error"; detail?: string }
+  | { kind: "done"; summary: DoneSummary }
   | { kind: "error"; text: string; upgradeTo?: "pro" | "creator" };
 
 type View = "chat" | "history";
@@ -157,9 +162,14 @@ export function AiPanel({ graph, onGraphReplace, strategyId, onHighlightNode }: 
           ui.push({ kind: "user", text });
         } else {
           const blocks = Array.isArray(r.content) ? (r.content as AiContentBlock[]) : [{ type: "text", text: String(r.content) } as AiContentBlock];
-          // Surface tool_use blocks as compact bubbles
+          // Surface tool_use blocks as compact bubbles — except `done`,
+          // which is re-materialised as the rich recap card below.
           for (const b of blocks) {
-            if (b.type === "tool_use") {
+            if (b.type !== "tool_use") continue;
+            if (b.name === "done") {
+              const parsed = parseDoneInput(b.input);
+              if (parsed) ui.push({ kind: "done", summary: parsed });
+            } else {
               ui.push({ kind: "tool", label: b.name, status: "ok" });
             }
           }
@@ -667,6 +677,9 @@ function MessageBubble({ m }: { m: UiMessage }) {
       </div>
     );
   }
+  if (m.kind === "done") {
+    return <DoneCard summary={m.summary} />;
+  }
   if (m.kind === "error") {
     return (
       <div className="rounded-xl border border-red-100 bg-red-50/60 px-3 py-2 text-xs text-red-700">
@@ -685,6 +698,161 @@ function MessageBubble({ m }: { m: UiMessage }) {
     );
   }
   return null;
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Done card — rich recap rendered when the AI calls done()
+// ──────────────────────────────────────────────────────────────────
+function DoneCard({ summary }: { summary: DoneSummary }) {
+  return (
+    <div className="rounded-2xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50/70 to-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
+      {/* Headline */}
+      <div className="px-4 py-3 border-b border-emerald-100 bg-emerald-50/40 flex items-start gap-2.5">
+        <span className="mt-0.5 inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500 text-white shrink-0">
+          <CheckCircle2 size={12} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="text-[10px] font-700 uppercase tracking-widest text-emerald-700">
+            All done
+          </div>
+          <div className="mt-0.5 text-sm font-700 text-gray-900 leading-snug">
+            {summary.summary}
+          </div>
+        </div>
+      </div>
+
+      <div className="px-4 py-3 space-y-3.5">
+        {summary.whatChanged.length > 0 && (
+          <DoneSection
+            icon={<ListChecks size={12} />}
+            title="What changed"
+            tone="emerald"
+          >
+            <ul className="space-y-1">
+              {summary.whatChanged.map((c, i) => (
+                <li key={i} className="flex gap-1.5 text-[12.5px] text-gray-700 leading-snug">
+                  <span className="text-emerald-500 shrink-0">•</span>
+                  <span>{c}</span>
+                </li>
+              ))}
+            </ul>
+          </DoneSection>
+        )}
+
+        {summary.strategyShape && (
+          <DoneSection
+            icon={<Compass size={12} />}
+            title="How it trades"
+            tone="slate"
+          >
+            <p className="text-[12.5px] text-gray-700 leading-relaxed">
+              {summary.strategyShape}
+            </p>
+          </DoneSection>
+        )}
+
+        {summary.nextSteps.length > 0 && (
+          <DoneSection
+            icon={<Lightbulb size={12} />}
+            title="Next steps"
+            tone="sky"
+          >
+            <ul className="space-y-1">
+              {summary.nextSteps.map((s, i) => (
+                <li key={i} className="flex gap-1.5 text-[12.5px] text-gray-700 leading-snug">
+                  <span className="text-sky-500 shrink-0">→</span>
+                  <span>{s}</span>
+                </li>
+              ))}
+            </ul>
+          </DoneSection>
+        )}
+
+        {summary.warnings && summary.warnings.length > 0 && (
+          <DoneSection
+            icon={<AlertTriangle size={12} />}
+            title="Watch out"
+            tone="amber"
+          >
+            <ul className="space-y-1">
+              {summary.warnings.map((w, i) => (
+                <li key={i} className="flex gap-1.5 text-[12.5px] text-amber-800 leading-snug">
+                  <span className="text-amber-500 shrink-0">!</span>
+                  <span>{w}</span>
+                </li>
+              ))}
+            </ul>
+          </DoneSection>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DoneSection({
+  icon,
+  title,
+  tone,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  tone: "emerald" | "slate" | "sky" | "amber";
+  children: React.ReactNode;
+}) {
+  const toneMap = {
+    emerald: "bg-emerald-50 text-emerald-700",
+    slate:   "bg-slate-100 text-slate-700",
+    sky:     "bg-sky-50 text-sky-700",
+    amber:   "bg-amber-50 text-amber-700",
+  }[tone];
+  return (
+    <div>
+      <div className={cn("inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[10px] font-700 uppercase tracking-wider", toneMap)}>
+        {icon}
+        {title}
+      </div>
+      <div className="mt-1.5 pl-0.5">{children}</div>
+    </div>
+  );
+}
+
+/**
+ * Re-materialise a DoneSummary from a persisted tool_use.input blob.
+ * We validate defensively because older conversations stored only
+ * `{ summary: string }` — in that case we still render the headline.
+ */
+function parseDoneInput(input: unknown): DoneSummary | null {
+  if (!input || typeof input !== "object") return null;
+  const record = input as Record<string, unknown>;
+  const summary = typeof record.summary === "string" && record.summary.trim()
+    ? record.summary.trim()
+    : null;
+  if (!summary) return null;
+  const whatChanged = normaliseStringArray(record.whatChanged);
+  const nextSteps = normaliseStringArray(record.nextSteps);
+  const warnings = normaliseStringArray(record.warnings);
+  const strategyShape = typeof record.strategyShape === "string" && record.strategyShape.trim()
+    ? record.strategyShape.trim()
+    : undefined;
+  return {
+    summary,
+    whatChanged,
+    strategyShape,
+    nextSteps,
+    warnings: warnings.length ? warnings : undefined,
+  };
+}
+
+function normaliseStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const out: string[] = [];
+  for (const v of value) {
+    if (typeof v !== "string") continue;
+    const t = v.trim();
+    if (t) out.push(t);
+  }
+  return out;
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -788,32 +956,42 @@ async function runAgenticLoop(
     }
 
     const toolResults: AiMessage["content"] = [];
-    let doneMsg: string | null = null;
+    let finished = false;
     for (const use of toolUses) {
       if (opts.abortRef.aborted) break;
-      setUi((m) => [...m, { kind: "tool", label: use.name, status: "running" }]);
-      await new Promise((r) => setTimeout(r, 120));
+      // `done` is rendered as a rich recap card, not a tool pill.
+      const isDone = use.name === "done";
+      if (!isDone) {
+        setUi((m) => [...m, { kind: "tool", label: use.name, status: "running" }]);
+        await new Promise((r) => setTimeout(r, 120));
+      }
 
       const outcome = executeTool(use, graphRef.current);
       graphRef.current = outcome.graph;
       replace(outcome.graph);
       if (outcome.highlightNodeId) onHighlight?.(outcome.highlightNodeId);
 
-      setUi((m) => {
-        const next = [...m];
-        for (let i = next.length - 1; i >= 0; i--) {
-          if (next[i].kind === "tool" && (next[i] as { status: string }).status === "running") {
-            next[i] = {
-              kind: "tool",
-              label: use.name,
-              status: outcome.isError ? "error" : "ok",
-              detail: outcome.result.slice(0, 140),
-            };
-            break;
-          }
+      if (isDone) {
+        if (outcome.doneSummary) {
+          setUi((m) => [...m, { kind: "done", summary: outcome.doneSummary! }]);
         }
-        return next;
-      });
+      } else {
+        setUi((m) => {
+          const next = [...m];
+          for (let i = next.length - 1; i >= 0; i--) {
+            if (next[i].kind === "tool" && (next[i] as { status: string }).status === "running") {
+              next[i] = {
+                kind: "tool",
+                label: use.name,
+                status: outcome.isError ? "error" : "ok",
+                detail: outcome.result.slice(0, 140),
+              };
+              break;
+            }
+          }
+          return next;
+        });
+      }
 
       toolResults.push({
         type: "tool_result",
@@ -822,11 +1000,11 @@ async function runAgenticLoop(
         is_error: outcome.isError,
       } as never);
 
-      if (outcome.finished && outcome.doneMessage) doneMsg = outcome.doneMessage;
+      if (outcome.finished) finished = true;
     }
 
     history.push({ role: "user", content: toolResults as never });
-    if (doneMsg) return { conversationId: activeConvoId!, conversationTitle: firstTitle };
+    if (finished) return { conversationId: activeConvoId!, conversationTitle: firstTitle };
   }
 
   setUi((m) => [

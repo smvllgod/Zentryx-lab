@@ -115,11 +115,40 @@ export const TOOL_SCHEMAS = [
   {
     name: "done",
     description:
-      "Signal that you have finished applying changes. Pass a final 1-3 sentence summary for the user.",
+      "Signal that you have finished applying changes. Always end multi-step responses with this tool. The UI renders your input as a rich summary card, so be generous with the structured fields — this is the only place the user reads a clean recap of what you did. Aim for specific, scannable bullets (short phrases, not paragraphs).",
     input_schema: {
       type: "object",
-      properties: { summary: { type: "string" } },
-      required: ["summary"],
+      properties: {
+        summary: {
+          type: "string",
+          description:
+            "One-sentence headline (under 120 chars) describing the end result. Example: \"Built a USDJPY M5 scalper with EMA cross entry, 3 filters, and ATR-based exits.\"",
+        },
+        whatChanged: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Concrete bullets — what you added, modified, or removed in this turn. One idea per bullet, under 100 chars each. Example: [\"Added EMA 8/21 cross entry (long + short)\", \"Wired risk_fixed_lot at 0.10 lots\", \"Renamed strategy to 'USDJPY Scalper Pro'\"]. Don't invent items to pad the list — keep it to what actually changed.",
+        },
+        strategyShape: {
+          type: "string",
+          description:
+            "Optional 1-2 sentence plain-language description of the strategy's runtime behaviour. Example: \"Enters on EMA cross during London session, sizes 1% risk on ATR-based stops, trails with break-even after +1R.\" Omit for pure metadata / fix-only turns.",
+        },
+        nextSteps: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "2-4 concrete suggestions the user might do next. Each under 100 chars. Example: [\"Validate and preview the MQL5 source\", \"Backtest on EURUSD M5 2023-2024\", \"Add a news filter if you want to avoid NFP\"]. Prioritise what is actually meaningful for this strategy, not generic tips.",
+        },
+        warnings: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Optional list of caveats, trade-offs, or gotchas specific to this strategy. Example: [\"Magic number shared with existing EAs will conflict — consider bumping\", \"No news filter — be cautious around NFP\"]. Omit if nothing warrants attention.",
+        },
+      },
+      required: ["summary", "whatChanged", "nextSteps"],
     },
   },
 ] as const;
@@ -128,6 +157,19 @@ export const TOOL_SCHEMAS = [
 // Client-side executor — applies a tool_use block against a graph
 // and returns an updated graph + a textual result for the AI.
 // ──────────────────────────────────────────────────────────────────
+
+export interface DoneSummary {
+  /** One-sentence headline describing the end result. */
+  summary: string;
+  /** Concrete bullets of what was added, modified, or removed. */
+  whatChanged: string[];
+  /** Optional 1-2 sentence description of the strategy's runtime behaviour. */
+  strategyShape?: string;
+  /** 2-4 concrete suggestions for what to do next. */
+  nextSteps: string[];
+  /** Optional caveats / trade-offs. */
+  warnings?: string[];
+}
 
 export interface ToolOutcome {
   graph: StrategyGraph;
@@ -138,8 +180,8 @@ export interface ToolOutcome {
   finished?: boolean;
   /** Optional animation hint for the UI — highlight this node. */
   highlightNodeId?: string;
-  /** Final user-facing message from done(). */
-  doneMessage?: string;
+  /** Structured recap from done(), rendered as a rich card. */
+  doneSummary?: DoneSummary;
 }
 
 export function executeTool(block: AiToolUseBlock, graph: StrategyGraph): ToolOutcome {
@@ -173,7 +215,29 @@ export function executeTool(block: AiToolUseBlock, graph: StrategyGraph): ToolOu
         };
       case "done": {
         const summary = String(input.summary ?? "Done.");
-        return { graph, result: summary, isError: false, finished: true, doneMessage: summary };
+        const whatChanged = toStringArray(input.whatChanged);
+        const nextSteps = toStringArray(input.nextSteps);
+        const warnings = toStringArray(input.warnings);
+        const strategyShape = typeof input.strategyShape === "string" && input.strategyShape.trim()
+          ? input.strategyShape.trim()
+          : undefined;
+        const doneSummary: DoneSummary = {
+          summary,
+          whatChanged,
+          strategyShape,
+          nextSteps,
+          warnings: warnings.length ? warnings : undefined,
+        };
+        // Plain-text echo for the tool_result. The AI sees this; the UI
+        // reads `doneSummary` instead for the rich card.
+        const result = [
+          summary,
+          whatChanged.length ? `Changes: ${whatChanged.join("; ")}` : null,
+          strategyShape ? `Shape: ${strategyShape}` : null,
+          nextSteps.length ? `Next: ${nextSteps.join("; ")}` : null,
+          warnings.length ? `Warnings: ${warnings.join("; ")}` : null,
+        ].filter(Boolean).join("\n");
+        return { graph, result: result || summary, isError: false, finished: true, doneSummary };
       }
       default:
         return { graph, result: `Unknown tool "${name}".`, isError: true };
@@ -289,6 +353,18 @@ function setMetadata(graph: StrategyGraph, input: Record<string, unknown>): Tool
     result: `Metadata updated.`,
     isError: false,
   };
+}
+
+/** Coerce an AI-supplied value into a clean string[] — trims, drops empties. */
+function toStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const out: string[] = [];
+  for (const item of value) {
+    if (typeof item !== "string") continue;
+    const trimmed = item.trim();
+    if (trimmed.length > 0) out.push(trimmed);
+  }
+  return out;
 }
 
 /** Helper: drill down to the final text content from the assistant. */
