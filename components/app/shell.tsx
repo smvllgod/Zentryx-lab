@@ -17,10 +17,32 @@ interface AppShellProps {
   bare?: boolean;
 }
 
+// localStorage key used to persist the collapsed state across visits.
+const SIDEBAR_COLLAPSED_KEY = "zx.sidebarCollapsed";
+
 export function AppShell({ title, actions, children, bare }: AppShellProps) {
   const { ready, configured, user } = useAuth();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Collapsible sidebar — enabled in `bare` mode (builder). Default
+  // uncollapsed; user's last choice is persisted across visits.
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+      if (stored === "1") setCollapsed(true);
+    } catch { /* no-op */ }
+  }, []);
+  const toggleCollapse = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try { window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0"); } catch { /* no-op */ }
+      return next;
+    });
+  };
+  const collapsible = bare === true;
+  const isCollapsed = collapsible && collapsed;
 
   useEffect(() => {
     if (configured && ready && !user) router.replace("/sign-in");
@@ -48,12 +70,20 @@ export function AppShell({ title, actions, children, bare }: AppShellProps) {
 
   return (
     <div className="min-h-screen bg-gray-50/60">
-      {/* Desktop sidebar */}
-      <aside className="hidden md:block fixed inset-y-0 left-0 w-64 border-r border-gray-100 bg-white">
-        <Sidebar />
+      {/* Desktop sidebar — width toggles with `collapsed` in bare mode */}
+      <aside
+        className={cn(
+          "hidden md:block fixed inset-y-0 left-0 border-r border-gray-100 bg-white transition-[width] duration-150",
+          isCollapsed ? "w-14" : "w-64",
+        )}
+      >
+        <Sidebar
+          collapsed={isCollapsed}
+          onToggleCollapse={collapsible ? toggleCollapse : undefined}
+        />
       </aside>
 
-      {/* Mobile sidebar overlay */}
+      {/* Mobile sidebar overlay — always expanded inside the drawer */}
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 z-40">
           <div
@@ -74,7 +104,8 @@ export function AppShell({ title, actions, children, bare }: AppShellProps) {
       */}
       <div
         className={cn(
-          "md:pl-64 flex flex-col",
+          "flex flex-col transition-[padding] duration-150",
+          isCollapsed ? "md:pl-14" : "md:pl-64",
           bare ? "h-screen overflow-hidden" : "min-h-screen",
         )}
       >
