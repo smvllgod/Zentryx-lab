@@ -29,7 +29,7 @@ export const RISK_BLOCKS: BlockDefinition[] = [
     id: "risk.kellyFraction",
     family: "risk", subcategory: "budget", name: "Kelly Fraction",
     short: "Size by (fractional) Kelly. Experimental.",
-    plan: "creator", priority: "P3", complexity: "advanced", status: "planned",
+    plan: "creator", priority: "P3", complexity: "advanced", status: "beta",
     affects: ["risk"], tags: ["kelly"],
     params: [
       { key: "fraction", label: "Kelly fraction", kind: "number", default: 0.25,
@@ -71,7 +71,7 @@ export const RISK_BLOCKS: BlockDefinition[] = [
     id: "risk.drawdownScale",
     family: "risk", subcategory: "adaptive", name: "Drawdown Risk Scaler",
     short: "Auto-reduce risk after X% open DD.",
-    plan: "creator", priority: "P3", complexity: "advanced", status: "planned",
+    plan: "creator", priority: "P3", complexity: "advanced", status: "beta",
     affects: ["risk"], tags: ["drawdown", "adaptive"],
     params: [
       P_PERCENT("triggerDdPercent", "Trigger DD", 5, { min: 0.1, max: 50 }),
@@ -82,7 +82,7 @@ export const RISK_BLOCKS: BlockDefinition[] = [
     id: "risk.equityCurveStop",
     family: "risk", subcategory: "adaptive", name: "Equity-Curve Kill Switch",
     short: "Stop trading when equity curve breaks its own MA.",
-    plan: "creator", priority: "P3", complexity: "advanced", status: "planned",
+    plan: "creator", priority: "P3", complexity: "advanced", status: "beta",
     affects: ["risk"], tags: ["equity-curve"],
     params: [P_PERIOD("maPeriod", "Equity-curve MA", 20, 5)],
   }),

@@ -52,7 +52,7 @@ export const NEWS_BLOCKS: BlockDefinition[] = [
     id: "news.dailyMacroBlock",
     family: "news", subcategory: "calendar", name: "FOMC / ECB / NFP Block",
     short: "Block entries on FOMC / ECB / NFP day.",
-    plan: "creator", priority: "P3", complexity: "intermediate", status: "planned",
+    plan: "creator", priority: "P3", complexity: "intermediate", status: "beta",
     affects: ["filter"], tags: ["news", "macro"],
     params: [
       { key: "events", label: "Events to block", kind: "multiSelect", default: ["fomc", "ecb", "nfp"],
@@ -73,7 +73,7 @@ export const NEWS_BLOCKS: BlockDefinition[] = [
     id: "news.sentimentFilter",
     family: "news", subcategory: "sentiment", name: "Sentiment Filter",
     short: "Block trades against sentiment bias.",
-    plan: "creator", priority: "P3", complexity: "advanced", status: "planned",
+    plan: "creator", priority: "P3", complexity: "advanced", status: "beta",
     affects: ["filter"], tags: ["sentiment"], params: [],
   }),
 ];

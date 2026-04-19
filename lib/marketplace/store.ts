@@ -20,6 +20,36 @@ export async function listPublishedListings(filter?: { tag?: string }): Promise<
   return data ?? [];
 }
 
+export interface ListingWithAuthor extends ListingRow {
+  author: { id: string; full_name: string | null; email: string } | null;
+}
+
+/**
+ * Published listings joined with author display info. Used by the
+ * public marketplace UI.
+ */
+export async function listPublishedListingsWithAuthors(): Promise<ListingWithAuthor[]> {
+  if (!isSupabaseConfigured()) return [];
+  const s = db();
+  const { data: listings, error } = await s
+    .from("marketplace_listings")
+    .select("*")
+    .eq("status", "published")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  const rows = (listings ?? []) as ListingRow[];
+  if (rows.length === 0) return [];
+  const authorIds = Array.from(new Set(rows.map((r) => r.author_id)));
+  const { data: authors } = await s
+    .from("profiles")
+    .select("id,full_name,email")
+    .in("id", authorIds);
+  const byId = new Map(
+    (authors ?? []).map((a: { id: string; full_name: string | null; email: string }) => [a.id, a]),
+  );
+  return rows.map((r) => ({ ...r, author: byId.get(r.author_id) ?? null }));
+}
+
 export async function listOwnListings(): Promise<ListingRow[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = db();

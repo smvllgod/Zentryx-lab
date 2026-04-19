@@ -44,7 +44,7 @@ export const BASKET_BLOCKS: BlockDefinition[] = [
     id: "basket.lockInProfit",
     family: "basket", subcategory: "behaviour", name: "Lock-In Profit",
     short: "After +X, set basket SL to lock +Y.",
-    plan: "creator", priority: "P3", complexity: "advanced", status: "planned",
+    plan: "creator", priority: "P3", complexity: "advanced", status: "beta",
     affects: ["management"], tags: ["lock-in"],
     params: [
       { key: "triggerPct", label: "Trigger (%)", kind: "number", default: 1 },
@@ -55,14 +55,14 @@ export const BASKET_BLOCKS: BlockDefinition[] = [
     id: "basket.hedgedClose",
     family: "basket", subcategory: "behaviour", name: "Close Hedged Pair",
     short: "Close long + short together on condition.",
-    plan: "creator", priority: "P3", complexity: "advanced", status: "planned",
+    plan: "creator", priority: "P3", complexity: "advanced", status: "beta",
     affects: ["management"], tags: ["hedge"], params: [],
   }),
   block({
     id: "basket.symbolGroup",
     family: "basket", subcategory: "scope", name: "Symbol Group",
     short: "Define which symbols share basket rules.",
-    plan: "creator", priority: "P3", complexity: "intermediate", status: "planned",
+    plan: "creator", priority: "P3", complexity: "intermediate", status: "beta",
     affects: ["management"], tags: ["scope"],
     params: [
       { key: "symbols", label: "Symbols (comma-separated)", kind: "csv", default: "EURUSD,GBPUSD" },
@@ -72,7 +72,7 @@ export const BASKET_BLOCKS: BlockDefinition[] = [
     id: "basket.correlationCap",
     family: "basket", subcategory: "portfolio", name: "Correlation Cap",
     short: "Cap trades on correlated pairs.",
-    plan: "creator", priority: "P3", complexity: "advanced", status: "planned",
+    plan: "creator", priority: "P3", complexity: "advanced", status: "beta",
     affects: ["filter"], tags: ["correlation"],
     params: [
       { key: "maxCorrelated", label: "Max simultaneous correlated trades", kind: "integer", default: 2,

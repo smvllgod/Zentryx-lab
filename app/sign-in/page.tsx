@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/toast";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -45,6 +46,15 @@ export default function SignInPage() {
         </>
       }
     >
+      <GoogleSignInButton mode="signin" />
+      <div className="relative my-5">
+        <div className="absolute inset-0 flex items-center" aria-hidden="true">
+          <div className="w-full border-t border-gray-200" />
+        </div>
+        <div className="relative flex justify-center text-[10px] font-600 uppercase tracking-wider">
+          <span className="bg-white px-2 text-gray-400">or with email</span>
+        </div>
+      </div>
       <form onSubmit={onSubmit} className="space-y-4">
         {!configured && (
           <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">

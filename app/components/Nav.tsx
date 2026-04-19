@@ -10,7 +10,7 @@ const NAV_LINKS = [
   { label: "Modules", hash: "modules" },
   { label: "Features", hash: "features" },
   { label: "Pricing", hash: "pricing" },
-  { label: "Marketplace", hash: "marketplace" },
+  { label: "Marketplace", href: "/marketplace" },
   { label: "Docs", href: "/docs" },
 ];
 

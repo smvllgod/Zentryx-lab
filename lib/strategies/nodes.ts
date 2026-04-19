@@ -921,3 +921,118 @@ export function searchNodes(query: string, defs: NodeDefinition[] = NODE_DEFINIT
     return false;
   });
 }
+
+// ──────────────────────────────────────────────────────────────────
+// Bridge: surface the full 200+ block library from lib/blocks/*
+// ──────────────────────────────────────────────────────────────────
+// The legacy NODE_DEFINITIONS above covers the 40 V1-shipped blocks
+// with rich inspector/translator wiring. The modular registry at
+// lib/blocks/* defines another 170+ beta blocks. We expose a merged
+// view so NodeLibrary shows everything — new blocks render as "Beta"
+// and fall back to the compiler's stub-warning path if they have no
+// translator yet.
+
+import { ALL_CANVAS_BLOCKS } from "../blocks/registry";
+import type { BlockDefinition, BlockFamily } from "../blocks/types";
+
+// Map new block families to the legacy category union.
+const FAMILY_TO_CATEGORY: Record<BlockFamily, NodeCategory> = {
+  entry: "entry",
+  confirmation: "filter",
+  trend: "filter",
+  momentum: "filter",
+  volatility: "filter",
+  structure: "filter",
+  candles: "filter",
+  session: "session",
+  news: "news",
+  execution: "filter",
+  risk: "risk",
+  lot: "lot",
+  management: "management",
+  exit: "exit",
+  basket: "utility",
+  grid: "grid",
+  mtf: "filter",
+  utility: "utility",
+  // protection + packaging are non-canvas (export config) — never surfaced here
+  protection: "utility",
+  packaging: "utility",
+};
+
+function toLegacyKind(k: BlockDefinition["params"][number]["kind"]): ParamKind {
+  switch (k) {
+    case "multiSelect": return "multiSelect";
+    case "timeframe": return "timeframe";
+    case "direction": return "direction";
+    case "csv": return "csv";
+    case "number": return "number";
+    case "integer": return "integer";
+    case "string": return "string";
+    case "boolean": return "boolean";
+    case "select": return "select";
+    case "time": return "time";
+    case "date": return "string";        // date → fallback to string input
+    case "symbol": return "string";      // symbol → free text for now
+    default: return "string";
+  }
+}
+
+function toLegacyParam(p: BlockDefinition["params"][number]): ParamSpec {
+  const { min, max, step, required } = extractNumericRules(p.validation);
+  return {
+    key: p.key,
+    label: p.label,
+    kind: toLegacyKind(p.kind),
+    default: p.default as unknown,
+    required,
+    min, max, step,
+    description: p.description,
+    options: p.options as ParamSpec["options"],
+    unit: p.unit,
+    visibleWhen: p.visibleWhen as ParamSpec["visibleWhen"],
+  };
+}
+
+function extractNumericRules(rules: BlockDefinition["params"][number]["validation"] | undefined) {
+  let min: number | undefined, max: number | undefined, step: number | undefined, required = false;
+  for (const r of rules ?? []) {
+    if (r.kind === "min") min = r.value;
+    else if (r.kind === "max") max = r.value;
+    else if (r.kind === "step") step = r.value;
+    else if (r.kind === "required") required = true;
+  }
+  return { min, max, step, required };
+}
+
+export function blockToNodeDefinition(b: BlockDefinition): NodeDefinition {
+  const isStub = b.status === "beta";
+  return {
+    type: b.id as NodeType,
+    category: FAMILY_TO_CATEGORY[b.family],
+    subcategory: b.subcategory,
+    label: b.displayName,
+    summary: b.shortDescription,
+    longDescription: b.longDescription,
+    userExplanation: b.userExplanation,
+    plan: b.plan,
+    status: b.status === "active" ? "active" : b.status === "beta" ? "beta" : "planned",
+    tags: b.tags,
+    premium: b.plan !== "free",
+    stub: isStub,                    // compiler treats as preview if no translator
+    params: b.params.map(toLegacyParam),
+  };
+}
+
+/**
+ * Full node-library source: legacy V1 blocks + every non-duplicate
+ * block from the modular registry that is active / beta.
+ * Legacy wins on id collision because it carries the translator wiring.
+ */
+export function getAllNodeDefinitions(): NodeDefinition[] {
+  const legacyIds = new Set(NODE_DEFINITIONS.map((d) => d.type));
+  const extra = ALL_CANVAS_BLOCKS
+    .filter((b) => (b.status === "active" || b.status === "beta") && !legacyIds.has(b.id as NodeType))
+    .map(blockToNodeDefinition);
+  return [...NODE_DEFINITIONS, ...extra];
+}

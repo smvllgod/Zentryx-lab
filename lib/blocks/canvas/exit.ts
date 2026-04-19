@@ -169,7 +169,7 @@ export const EXIT_BLOCKS: BlockDefinition[] = [
     id: "exit.ichimokuKijunExit",
     family: "exit", subcategory: "indicator", name: "Ichimoku Kijun Exit",
     short: "Close when price crosses Kijun.",
-    plan: "creator", priority: "P3", complexity: "advanced", status: "planned",
+    plan: "creator", priority: "P3", complexity: "advanced", status: "beta",
     affects: ["exit"], mt5: true, tags: ["ichimoku"],
     params: [P_PERIOD("kijun", "Kijun period", 26, 2)],
   }),

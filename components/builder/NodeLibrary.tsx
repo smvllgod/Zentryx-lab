@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import {
   CATEGORY_COLORS,
   CATEGORY_LABELS,
-  NODE_DEFINITIONS,
+  getAllNodeDefinitions,
   searchNodes,
   type NodeDefinition,
 } from "@/lib/strategies/nodes";
@@ -35,7 +35,7 @@ export function NodeLibrary({ onAdd }: { onAdd: (def: NodeDefinition) => void })
   const plan = (profile?.plan ?? "free") as PlanTier;
 
   const visible = useMemo(() => {
-    let defs = NODE_DEFINITIONS.filter(
+    let defs = getAllNodeDefinitions().filter(
       (d) =>
         VISIBLE_CATEGORIES.includes(d.category) &&
         (d.status ?? "active") !== "planned" &&

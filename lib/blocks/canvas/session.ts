@@ -90,7 +90,7 @@ export const SESSION_BLOCKS: BlockDefinition[] = [
     id: "session.monthOfYear",
     family: "session", subcategory: "day", name: "Month of Year",
     short: "Whitelist of months.",
-    plan: "pro", priority: "P3", complexity: "basic", status: "planned",
+    plan: "pro", priority: "P3", complexity: "basic", status: "beta",
     affects: ["filter"], tags: ["month"],
     params: [
       { key: "months", label: "Active months", kind: "multiSelect", default: [1,2,3,4,5,6,7,8,9,10,11,12],
@@ -106,7 +106,7 @@ export const SESSION_BLOCKS: BlockDefinition[] = [
     id: "session.holidayCalendar",
     family: "session", subcategory: "event", name: "Holiday Calendar",
     short: "Block entries on known broker holidays.",
-    plan: "creator", priority: "P3", complexity: "advanced", status: "planned",
+    plan: "creator", priority: "P3", complexity: "advanced", status: "beta",
     affects: ["filter"], tags: ["holidays"], params: [],
   }),
 ];

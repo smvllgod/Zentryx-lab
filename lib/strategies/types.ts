@@ -85,7 +85,12 @@ export type NodeType =
   | "utility.maxDailyLoss"           // V1 addition (moved from filter)
   | "utility.slippageControl"
   | "utility.emergencyStop"
-  | "utility.onlyNewBar";            // V1 addition
+  | "utility.onlyNewBar"             // V1 addition
+  // Any additional block id from the modular registry (lib/blocks/*).
+  // The intersection with `string` keeps autocomplete on the literal
+  // union while accepting any string at runtime. Compiler treats
+  // unknown types as preview-only (warning, no code gen).
+  | (string & {});
 
 export interface StrategyNode<P = Record<string, unknown>> {
   id: string;
