@@ -15,6 +15,19 @@
 import type { StrategyGraph, NodeCategory, NodeType } from "@/lib/strategies/types";
 import { STRATEGY_GRAPH_VERSION } from "@/lib/strategies/types";
 import type { Template } from "./types";
+import {
+  TrendingUp,
+  MoveUpRight,
+  Award,
+  Crosshair,
+  Activity,
+  RefreshCw,
+  Layers,
+  Clock,
+  Shield,
+  Grid3x3,
+  AlertTriangle,
+} from "lucide-react";
 
 // ── helpers ────────────────────────────────────────────────────────
 
@@ -86,7 +99,7 @@ const emaCrossProEur: Template = {
   difficulty: "beginner",
   risk: "medium",
   tagline: "20/50 EMA cross with ADX trend filter and ATR-based exits.",
-  emoji: "📈",
+  icon: TrendingUp,
   accent: "#10b981",
   featured: true,
   description:
@@ -141,7 +154,7 @@ const donchianBreakout: Template = {
   difficulty: "intermediate",
   risk: "medium",
   tagline: "20-bar breakout, 10-bar exit, ATR trail. The turtle classic, modernised.",
-  emoji: "🐢",
+  icon: MoveUpRight,
   accent: "#3b82f6",
   featured: true,
   description:
@@ -196,7 +209,7 @@ const rsiMeanReversion: Template = {
   difficulty: "intermediate",
   risk: "medium",
   tagline: "Fade overstretched moves in ranging markets, with a strict cooldown.",
-  emoji: "🔄",
+  icon: RefreshCw,
   accent: "#f59e0b",
   description:
     "A counter-trend EA that fires when RSI pushes into an extreme and reverses back into the band. The ADX non-trend filter keeps it out of strong trends, and a 30-minute cooldown after any SL prevents revenge-trading during a losing regime.",
@@ -249,7 +262,7 @@ const bollingerSqueezeBreak: Template = {
   difficulty: "intermediate",
   risk: "medium",
   tagline: "Wait for a volatility squeeze, then trade the expansion.",
-  emoji: "💥",
+  icon: Activity,
   accent: "#a855f7",
   description:
     "Identifies periods of low volatility (BB bandwidth below a threshold) then enters on the directional break of the upper or lower band. Expansion-after-contraction is one of the most reliable regime transitions in FX.",
@@ -300,7 +313,7 @@ const propFirmSafe: Template = {
   difficulty: "intermediate",
   risk: "low",
   tagline: "Built to survive FTMO / MFF / The5ers: 0.5% risk, daily DD cap, news pause.",
-  emoji: "🛡️",
+  icon: Shield,
   accent: "#10b981",
   featured: true,
   description:
@@ -360,7 +373,7 @@ const londonOpenScalper: Template = {
   difficulty: "intermediate",
   risk: "medium",
   tagline: "Fast breakouts during the London open, session-bounded, tight risk.",
-  emoji: "🏙️",
+  icon: Clock,
   accent: "#ef4444",
   description:
     "A session scalper that wakes up for the London open, trades 10-bar breakouts for the first 4 hours, then goes to bed. Uses tight ATR-based stops and a daily trade cap to stay disciplined.",
@@ -414,7 +427,7 @@ const multiTfMomentum: Template = {
   difficulty: "intermediate",
   risk: "medium",
   tagline: "Higher-TF trend says where, MACD on M15 says when.",
-  emoji: "🎯",
+  icon: Layers,
   accent: "#6366f1",
   description:
     "Couples a H4 EMA-slope bias filter with a M15 MACD crossover trigger. Trades only fire when both agree. Added ATR exits and break-even keep winners healthy, a trailing stop rides runners.",
@@ -463,7 +476,7 @@ const goldTrendH4: Template = {
   difficulty: "intermediate",
   risk: "medium",
   tagline: "Tuned for XAUUSD H4 — wider stops, stricter trend filter.",
-  emoji: "🥇",
+  icon: Award,
   accent: "#f59e0b",
   description:
     "Gold is gold — it moves big and doesn't respect tight stops. This template ships an ADX + EMA alignment trend-follower with 2× ATR stops and a 1:2.5 R:R, purpose-tuned for XAUUSD H4. Includes weekend carry protection (gold hates Monday gaps).",
@@ -518,7 +531,7 @@ const atrGridBasket: Template = {
   difficulty: "advanced",
   risk: "high",
   tagline: "Volatility-aware grid with basket take-profit and hard equity kill-switch.",
-  emoji: "🕸️",
+  icon: Grid3x3,
   accent: "#0ea5e9",
   description:
     "A grid system that spaces additions by ATR instead of fixed pips, so it adapts to market volatility. The whole basket closes at a $ profit target or -5% equity emergency. Designed for sideways / oscillating markets on low-spread majors.",
@@ -572,7 +585,7 @@ const martingaleRecovery: Template = {
   difficulty: "advanced",
   risk: "very-high",
   tagline: "High-risk recovery grid with hard caps and emergency stop. Study the caveats.",
-  emoji: "🎲",
+  icon: AlertTriangle,
   accent: "#ef4444",
   description:
     "A martingale recovery strategy with strict guardrails. Orders scale up 1.8× after each loser, capped at 4 steps. Daily loss latched at -4%, account-level emergency at -7%. Designed to be understood, not blindly deployed.",
@@ -630,7 +643,7 @@ const oneShotSniper: Template = {
   difficulty: "intermediate",
   risk: "low",
   tagline: "One trade at a time, three filters must agree, strict 1:2 R:R.",
-  emoji: "🎯",
+  icon: Crosshair,
   accent: "#14b8a6",
   description:
     "A low-frequency, high-precision EA. Requires EMA alignment, MACD direction, and RSI side to all agree before firing — and only one trade is ever open at a time. When it's right, it's usually right by a lot.",

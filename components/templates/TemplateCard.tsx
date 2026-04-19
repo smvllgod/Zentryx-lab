@@ -42,13 +42,13 @@ export function TemplateCard({
       <div className="flex items-start justify-between gap-3 mb-3">
         <div
           className={cn(
-            "rounded-xl flex items-center justify-center text-2xl shrink-0",
+            "rounded-xl flex items-center justify-center shrink-0",
             compact ? "w-10 h-10" : "w-12 h-12",
           )}
-          style={{ background: accent + "18" }}
+          style={{ background: accent + "18", color: accent }}
           aria-hidden
         >
-          <span>{template.emoji}</span>
+          <template.icon size={compact ? 18 : 22} strokeWidth={2} />
         </div>
         <div className="flex flex-wrap gap-1 justify-end">
           <Badge tone={RISK_TONE[template.risk]}>{RISK_LABEL[template.risk]}</Badge>

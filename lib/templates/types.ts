@@ -7,6 +7,7 @@
 // real strategy from one.
 
 import type { StrategyGraph, StrategyNode, StrategyEdge, Timeframe } from "@/lib/strategies/types";
+import type { LucideIcon } from "lucide-react";
 
 export type TemplateCategory =
   | "trend"        // Trend-following
@@ -53,8 +54,8 @@ export interface TemplateMeta {
   caveats?: string[];
   /** Hex color used as accent on the card / badge (fallbacks to emerald). */
   accent?: string;
-  /** Emoji icon shown on the card. */
-  emoji: string;
+  /** Lucide icon rendered in the card corner (no emoji by design). */
+  icon: LucideIcon;
   /** Set to true to mark a template as featured on the overview page. */
   featured?: boolean;
 }
