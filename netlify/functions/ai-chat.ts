@@ -397,21 +397,8 @@ export default async (req: Request, _ctx: Context) => {
           tokens_out: response.usage.output_tokens,
         },
       ]);
-      // Bump the conversation's last_message_at + counter so the sidebar
-      // can sort by recency without an aggregate query.
-      await admin.rpc("bump_ai_conversation", {
-        p_conversation_id: conversationId,
-      }).then(
-        () => undefined,
-        // RPC may not exist (we'll add a fallback below); ignore failure.
-        () => undefined,
-      );
-      await admin
-        .from("ai_conversations")
-        .update({
-          last_message_at: new Date().toISOString(),
-        })
-        .eq("id", conversationId);
+      // message_count and last_message_at are maintained by a Postgres
+      // trigger on ai_messages (migration 0010). Nothing to do here.
     }
 
     return json({
