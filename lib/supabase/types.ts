@@ -258,24 +258,29 @@ export interface Database {
           title: string;
           description: string;
           thumbnail_url: string | null;
+          presentation_image_url: string | null;
+          gallery_urls: string[];
           price_cents: number;
           currency: string;
           tags: string[];
           status: "draft" | "published" | "archived";
           downloads: number;
           rating: number | null;
+          rating_count: number;
           created_at: string;
           updated_at: string;
         };
         Insert: Omit<
           Database["public"]["Tables"]["marketplace_listings"]["Row"],
-          "id" | "created_at" | "updated_at" | "downloads" | "rating"
+          "id" | "created_at" | "updated_at" | "downloads" | "rating" | "rating_count" | "gallery_urls"
         > & {
           id?: string;
           created_at?: string;
           updated_at?: string;
           downloads?: number;
           rating?: number | null;
+          rating_count?: number;
+          gallery_urls?: string[];
         };
         Update: Partial<Database["public"]["Tables"]["marketplace_listings"]["Insert"]>;
       };

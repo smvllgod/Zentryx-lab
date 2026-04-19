@@ -117,6 +117,8 @@ export async function updateListing(
     tags: string[];
     status: "draft" | "published" | "archived";
     thumbnail_url: string | null;
+    presentation_image_url: string | null;
+    gallery_urls: string[];
   }>,
 ): Promise<ListingRow> {
   const { data, error } = await db()

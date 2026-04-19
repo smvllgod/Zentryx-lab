@@ -283,8 +283,8 @@ function ListingCard({ listing: l, signedIn }: { listing: ListingWithAuthor; sig
         <div className="relative aspect-[16/9] bg-gradient-to-br from-emerald-50 via-white to-emerald-50/40 overflow-hidden">
           <div className="absolute inset-0 grid-bg opacity-70" aria-hidden="true" />
           <div className="absolute inset-0 flex items-center justify-center">
-            {l.thumbnail_url
-              ? <img src={l.thumbnail_url} alt="" className="w-full h-full object-cover" />
+            {(l.presentation_image_url || l.thumbnail_url)
+              ? <img src={(l.presentation_image_url ?? l.thumbnail_url) as string} alt="" className="w-full h-full object-cover" />
               : <Zap size={32} className="text-emerald-500/60" />}
           </div>
           <div className="absolute top-3 left-3">

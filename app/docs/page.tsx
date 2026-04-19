@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -23,8 +23,11 @@ import {
   NODE_DEFINITIONS,
   CATEGORY_LABELS,
   CATEGORY_COLORS,
+  getAllNodeDefinitions,
   type NodeDefinition,
 } from "@/lib/strategies/nodes";
+import { BLOCK_REGISTRY, FAMILY_META } from "@/lib/blocks";
+import { ALL_THEMES } from "@/lib/appearance/registry";
 import type { NodeCategory } from "@/lib/strategies/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -34,24 +37,38 @@ import { cn } from "@/lib/utils/cn";
 type Section =
   | "intro"
   | "getting-started"
+  | "auth-onboarding"
   | "builder"
   | "ai-helper"
   | "nodes"
+  | "appearance"
   | "mql5-export"
+  | "license"
+  | "marketplace"
+  | "admin"
   | "strategy-tester"
   | "plans"
   | "faq";
 
-const SECTIONS: { id: Section; label: string; icon: React.ReactNode }[] = [
-  { id: "intro", label: "Introduction", icon: <Book size={14} /> },
-  { id: "getting-started", label: "Getting started", icon: <Sparkles size={14} /> },
-  { id: "builder", label: "Strategy builder", icon: <Workflow size={14} /> },
-  { id: "ai-helper", label: "Zentryx AI", icon: <Zap size={14} /> },
-  { id: "nodes", label: "Node reference", icon: <ListTree size={14} /> },
-  { id: "mql5-export", label: "MQL5 export", icon: <Code2 size={14} /> },
-  { id: "strategy-tester", label: "Strategy Tester", icon: <Download size={14} /> },
-  { id: "plans", label: "Plans & limits", icon: <ShieldCheck size={14} /> },
-  { id: "faq", label: "FAQ", icon: <Book size={14} /> },
+const SECTIONS: { id: Section; label: string; icon: React.ReactNode; group?: string }[] = [
+  { id: "intro", label: "Introduction", icon: <Book size={14} />, group: "Start here" },
+  { id: "getting-started", label: "Getting started", icon: <Sparkles size={14} />, group: "Start here" },
+  { id: "auth-onboarding", label: "Sign-in & onboarding", icon: <LogIn size={14} />, group: "Start here" },
+
+  { id: "builder", label: "Strategy builder", icon: <Workflow size={14} />, group: "Build" },
+  { id: "ai-helper", label: "Zentryx AI", icon: <Zap size={14} />, group: "Build" },
+  { id: "nodes", label: "Block library (200+)", icon: <ListTree size={14} />, group: "Build" },
+  { id: "appearance", label: "EA Appearance", icon: <Sparkles size={14} />, group: "Build" },
+
+  { id: "mql5-export", label: "MQL5 export", icon: <Code2 size={14} />, group: "Ship" },
+  { id: "license", label: "Protection & licenses", icon: <ShieldCheck size={14} />, group: "Ship" },
+  { id: "strategy-tester", label: "Strategy Tester", icon: <Download size={14} />, group: "Ship" },
+
+  { id: "marketplace", label: "Marketplace", icon: <Hexagon size={14} />, group: "Distribute" },
+  { id: "admin", label: "Admin (staff)", icon: <Cog size={14} />, group: "Distribute" },
+
+  { id: "plans", label: "Plans & limits", icon: <CheckCircle2 size={14} />, group: "Reference" },
+  { id: "faq", label: "FAQ", icon: <Book size={14} />, group: "Reference" },
 ];
 
 const VISIBLE_CATEGORIES: NodeCategory[] = [
@@ -62,23 +79,26 @@ export default function DocsPage() {
   const [active, setActive] = useState<Section>("intro");
   const [query, setQuery] = useState("");
 
+  const allNodes = useMemo(() => getAllNodeDefinitions(), []);
+
   const filteredNodes = useMemo(() => {
-    if (!query) return NODE_DEFINITIONS;
+    if (!query) return allNodes;
     const q = query.toLowerCase();
-    return NODE_DEFINITIONS.filter(
+    return allNodes.filter(
       (n) =>
         n.label.toLowerCase().includes(q) ||
         n.type.toLowerCase().includes(q) ||
-        n.summary.toLowerCase().includes(q),
+        n.summary.toLowerCase().includes(q) ||
+        (n.tags ?? []).some((t) => t.toLowerCase().includes(q)),
     );
-  }, [query]);
+  }, [query, allNodes]);
 
   const nodeStats = useMemo(() => {
-    const total = NODE_DEFINITIONS.length;
-    const premium = NODE_DEFINITIONS.filter((n) => n.premium).length;
-    const preview = NODE_DEFINITIONS.filter((n) => n.stub).length;
+    const total = allNodes.length;
+    const premium = allNodes.filter((n) => n.premium).length;
+    const preview = allNodes.filter((n) => n.stub || n.status === "beta").length;
     return { total, premium, preview, live: total - preview };
-  }, []);
+  }, [allNodes]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -155,8 +175,14 @@ export default function DocsPage() {
             Contents
           </div>
           <ul className="space-y-0.5">
-            {SECTIONS.map((s) => (
-              <li key={s.id}>
+            {SECTIONS.map((s, idx) => (
+              <React.Fragment key={s.id}>
+                {s.group && (idx === 0 || SECTIONS[idx - 1].group !== s.group) && (
+                  <li className="px-3 pt-4 pb-1 text-[9px] font-700 uppercase tracking-[0.14em] text-gray-400 first:pt-1">
+                    {s.group}
+                  </li>
+                )}
+              <li>
                 <button
                   onClick={() => setActive(s.id)}
                   className={cn(
@@ -172,6 +198,7 @@ export default function DocsPage() {
                   {s.label}
                 </button>
               </li>
+              </React.Fragment>
             ))}
           </ul>
           <div className="mt-8 px-3">
@@ -192,8 +219,13 @@ export default function DocsPage() {
         <article>
           {active === "intro" && <Intro setActive={setActive} />}
           {active === "getting-started" && <GettingStarted />}
+          {active === "auth-onboarding" && <AuthOnboardingDocs />}
           {active === "builder" && <BuilderDocs />}
           {active === "ai-helper" && <AiHelperDocs />}
+          {active === "appearance" && <AppearanceDocs />}
+          {active === "license" && <LicenseDocs />}
+          {active === "marketplace" && <MarketplaceDocs />}
+          {active === "admin" && <AdminDocs />}
           {active === "nodes" && (
             <NodeReference nodes={filteredNodes} query={query} onQueryChange={setQuery} totalCount={NODE_DEFINITIONS.length} />
           )}
@@ -1070,3 +1102,229 @@ function Kbd({ children }: { children: React.ReactNode }) {
   );
 }
 
+
+// ────────────────────────────────────────────────────────────────────
+// New sections — V1.1: auth/onboarding, appearance, license, marketplace, admin
+// ────────────────────────────────────────────────────────────────────
+
+function AuthOnboardingDocs() {
+  return (
+    <article className="prose-docs space-y-6">
+      <SectionHeader
+        title="Sign-in & onboarding"
+        subtitle="Email + password, Google OAuth, and a skippable personalization wizard."
+      />
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">Authentication options</h3>
+        <ul className="mt-3 space-y-2">
+          <Bullet>Email + password (instant signup, email confirmation optional).</Bullet>
+          <Bullet><strong>Sign in with Google</strong> — OAuth 2.0 via Supabase. Creator can enable it in <code>Authentication → Providers</code>.</Bullet>
+          <Bullet>Password reset via <a href="/forgot-password" className="text-emerald-600 font-600">/forgot-password</a>.</Bullet>
+          <Bullet>Sessions persist across reloads; sign-out is in the top-right profile chip.</Bullet>
+        </ul>
+      </CardContent></Card>
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">Onboarding wizard</h3>
+        <p className="text-sm text-gray-600 mt-2">
+          A 7-step personalization flow triggered on first sign-in. Every step is skippable — answers tune block defaults and content
+          recommendations without blocking access to the app.
+        </p>
+        <ol className="mt-3 space-y-1.5 text-sm text-gray-700 list-decimal ml-5">
+          <li>Trading level (beginner → pro)</li>
+          <li>Markets traded (forex, metals, indices, crypto, stocks, futures)</li>
+          <li>Trading style (trend, breakout, reversal, scalp, grid, news, SMC, algorithmic)</li>
+          <li>Goal (learn, ship EA, prop-firm, sell on marketplace)</li>
+          <li>Account size (optional)</li>
+          <li>Broker / platform (optional free-text)</li>
+          <li>How you heard about us (Twitter, YouTube, Telegram, Friend, Search, Other + free-text)</li>
+        </ol>
+        <p className="mt-3 text-xs text-gray-500">
+          All fields update later in Settings → Profile. The wizard sets <code>profiles.onboarded = true</code> when completed or skipped.
+        </p>
+      </CardContent></Card>
+    </article>
+  );
+}
+
+function AppearanceDocs() {
+  return (
+    <article className="prose-docs space-y-6">
+      <SectionHeader
+        title="EA Appearance"
+        subtitle="On-chart panel styling for your exported MT5 Expert Advisor. 6 themes, 17 KPI modules, zero freeform chaos."
+      />
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">What it controls</h3>
+        <p className="text-sm text-gray-600 mt-2">
+          Every exported EA can include an info panel on the chart: EA name, live P/L, spread, session, open trades, license state, etc.
+          The panel is a set of <code>OBJ_RECTANGLE_LABEL</code> + <code>OBJ_LABEL</code> objects — native MT5, no web tech.
+        </p>
+        <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
+          {ALL_THEMES.map((t) => (
+            <div key={t.id} className="rounded-xl border border-gray-200 overflow-hidden">
+              <div className="p-3" style={{ background: t.palette.panelBg.css, color: t.palette.headerText.css }}>
+                <div className="text-[10px] font-700 uppercase tracking-wider opacity-70">{t.displayName}</div>
+                <div className="text-[9px] mt-1 opacity-60">{t.plan}</div>
+              </div>
+              <div className="px-3 py-2 text-[10px] text-gray-500">{t.tagline}</div>
+            </div>
+          ))}
+        </div>
+      </CardContent></Card>
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">How to configure</h3>
+        <ol className="mt-2 space-y-2 text-sm text-gray-700 list-decimal ml-5">
+          <li>Open the builder on any strategy.</li>
+          <li>Click <Kbd>Appearance</Kbd> in the top bar.</li>
+          <li>Pick a theme, toggle KPI modules, set corner / size / accent.</li>
+          <li>Save — the config persists on the strategy and is embedded in every future export.</li>
+        </ol>
+        <p className="mt-3 text-xs text-gray-500">
+          Free tier: 3 themes. Pro: all 6. Creator: custom accent override, hide header / footer.
+        </p>
+      </CardContent></Card>
+    </article>
+  );
+}
+
+function LicenseDocs() {
+  return (
+    <article className="prose-docs space-y-6">
+      <SectionHeader
+        title="Protection & licensing"
+        subtitle="Lock exported EAs to specific accounts, brokers, or time windows. Creator-tier adds remote license keys."
+      />
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">Protection modules</h3>
+        <p className="text-sm text-gray-600 mt-2">Available in the Export wizard — compile into the MQL5 source, not into the strategy logic.</p>
+        <ul className="mt-3 space-y-2">
+          <Bullet><strong>Bind to account number</strong> — whitelist of MT5 logins. EA exits OnInit if the account isn&apos;t listed. <em>Pro.</em></Bullet>
+          <Bullet><strong>Expiry date</strong> — UTC timestamp. EA self-disables after. <em>Pro.</em></Bullet>
+          <Bullet><strong>Bind to broker</strong> — match on <code>ACCOUNT_COMPANY</code>. <em>Pro.</em></Bullet>
+          <Bullet><strong>Demo-only flag</strong> — refuse live accounts. <em>Pro.</em></Bullet>
+          <Bullet><strong>Source watermark</strong> — build timestamp + buyer id comment. <em>Pro.</em></Bullet>
+          <Bullet><strong>License key server</strong> — HTTPS check on OnInit against a signed key endpoint, with grace mode. <em>Creator.</em></Bullet>
+          <Bullet><strong>Obfuscation level</strong> — rename helpers / inline constants. <em>Creator, roadmap.</em></Bullet>
+        </ul>
+      </CardContent></Card>
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">License dashboard</h3>
+        <p className="text-sm text-gray-600 mt-2">
+          Creators can manage license keys per listing via <a href="/licenses" className="text-emerald-600 font-600">/licenses</a>: issue, revoke, reset, inspect usage.
+          Admins see global stats under <a href="/admin/licenses" className="text-emerald-600 font-600">/admin/licenses</a>.
+        </p>
+      </CardContent></Card>
+    </article>
+  );
+}
+
+function MarketplaceDocs() {
+  return (
+    <article className="prose-docs space-y-6">
+      <SectionHeader
+        title="Marketplace"
+        subtitle="Browse community-built strategies. Sell yours (Creator tier)."
+      />
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">Browse (public)</h3>
+        <p className="text-sm text-gray-600 mt-2">
+          <a href="/marketplace" className="text-emerald-600 font-600">/marketplace</a> is accessible without signing in —
+          visitors can search, filter, read descriptions and reviews. Only the checkout requires authentication.
+        </p>
+        <ul className="mt-3 space-y-2">
+          <Bullet>Filter by price (free / paid), styles, tags.</Bullet>
+          <Bullet>Sort: featured, newest, top rated, most downloaded, price.</Bullet>
+          <Bullet>Featured strip highlights top-downloaded listings.</Bullet>
+        </ul>
+      </CardContent></Card>
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">Creating a listing</h3>
+        <ol className="mt-2 space-y-2 text-sm text-gray-700 list-decimal ml-5">
+          <li>Creator tier required. Go to <a href="/marketplace/listings" className="text-emerald-600 font-600">/marketplace/listings</a> → <strong>New listing</strong>.</li>
+          <li>Pick a strategy from your library. Set title / description / price / tags.</li>
+          <li>The edit dialog opens — <strong>upload a presentation image</strong> (hero) + <strong>up to 8 gallery images</strong> (backtests, results, chart panels). Images auto-save.</li>
+          <li>Review the detail page, then click <strong>Publish</strong>.</li>
+        </ol>
+      </CardContent></Card>
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">Reviews & ratings</h3>
+        <ul className="mt-2 space-y-2">
+          <Bullet>Only verified buyers (paid purchase) can write a review.</Bullet>
+          <Bullet>One review per user per listing — editable and deletable by the author.</Bullet>
+          <Bullet>Star rating (1–5) + optional body up to 1500 characters.</Bullet>
+          <Bullet>Listing aggregated rating updates automatically via database trigger.</Bullet>
+        </ul>
+      </CardContent></Card>
+    </article>
+  );
+}
+
+function AdminDocs() {
+  return (
+    <article className="prose-docs space-y-6">
+      <SectionHeader
+        title="Admin dashboard"
+        subtitle="Internal control center. Role-gated to admin / staff."
+      />
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">Access</h3>
+        <p className="text-sm text-gray-600 mt-2">
+          Admins reach the panel at <a href="/admin" className="text-emerald-600 font-600">/admin</a>. A route guard redirects
+          anyone whose <code>profiles.role</code> isn&apos;t <code>admin</code> or <code>staff</code>. Cmd-K opens a global search.
+        </p>
+      </CardContent></Card>
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">Sections</h3>
+        <ul className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-700">
+          <li><strong>Overview</strong> — stats, sparklines, block heatmap, top creators & blocks, recent errors.</li>
+          <li><strong>Users</strong> — list / search / suspend / change plan or role / bulk actions / CSV.</li>
+          <li><strong>Subscriptions</strong> — status distribution, manual overrides.</li>
+          <li><strong>Strategies</strong> — full graph inspection, generated MQL5 preview, version history.</li>
+          <li><strong>Logic Blocks</strong> — usage analytics, per-block status / plan / visibility override.</li>
+          <li><strong>Exports</strong> — every .mq5 download logged with filters.</li>
+          <li><strong>Marketplace</strong> — listings moderation, flag resolution.</li>
+          <li><strong>Creators</strong> — top creators, listing conversion, revenue.</li>
+          <li><strong>Licenses</strong> — global license analytics across creator-issued keys.</li>
+          <li><strong>Flags / Control</strong> — global feature flags + per-block overrides.</li>
+          <li><strong>Audit log</strong> — every admin mutation with actor, target, before / after.</li>
+          <li><strong>System</strong> — maintenance mode, announcement banner, pricing, licensing defaults.</li>
+        </ul>
+      </CardContent></Card>
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">Safety</h3>
+        <ul className="mt-2 space-y-2">
+          <Bullet>Every destructive action gates through a confirm dialog.</Bullet>
+          <Bullet>Every mutation is written to <code>admin_actions</code> with the actor, target, and before/after snapshot.</Bullet>
+          <Bullet>RLS enforces admin-only access server-side — not just in the UI.</Bullet>
+        </ul>
+      </CardContent></Card>
+    </article>
+  );
+}
+
+function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <header>
+      <h2 className="text-2xl font-700 text-gray-900">{title}</h2>
+      {subtitle && <p className="mt-1.5 text-sm text-gray-500">{subtitle}</p>}
+    </header>
+  );
+}
+
+// Intentional no-op to reference the imports used in sections above and keep
+// the TypeScript tree-shaker from flagging them as unused when sections are
+// rendered conditionally.
+void BLOCK_REGISTRY;
+void FAMILY_META;
