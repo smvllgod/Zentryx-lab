@@ -148,6 +148,49 @@ export async function isFollowing(creatorId: string): Promise<boolean> {
   return Boolean(data);
 }
 
+/**
+ * Does the creator already follow the current viewer? Used to render
+ * "Follow back" instead of plain "Follow" when the relationship is
+ * asymmetric (they follow you, you don't follow them).
+ */
+export async function isFollowedBy(creatorId: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  const s = db();
+  const { data: { user } } = await s.auth.getUser();
+  if (!user) return false;
+  if (user.id === creatorId) return false;
+  const { data } = await s
+    .from("creator_follows")
+    .select("follower_id")
+    .eq("follower_id", creatorId)
+    .eq("creator_id", user.id)
+    .maybeSingle();
+  return Boolean(data);
+}
+
+/**
+ * Single round-trip that returns both directions of the relationship so
+ * the button can render immediately without a second query.
+ */
+export async function fetchFollowRelationship(creatorId: string): Promise<{ iFollowThem: boolean; theyFollowMe: boolean }> {
+  if (!isSupabaseConfigured()) return { iFollowThem: false, theyFollowMe: false };
+  const s = db();
+  const { data: { user } } = await s.auth.getUser();
+  if (!user || user.id === creatorId) return { iFollowThem: false, theyFollowMe: false };
+  const { data } = await s
+    .from("creator_follows")
+    .select("follower_id, creator_id")
+    .or(
+      `and(follower_id.eq.${user.id},creator_id.eq.${creatorId}),` +
+      `and(follower_id.eq.${creatorId},creator_id.eq.${user.id})`,
+    );
+  const rows = (data ?? []) as { follower_id: string; creator_id: string }[];
+  return {
+    iFollowThem: rows.some((r) => r.follower_id === user.id && r.creator_id === creatorId),
+    theyFollowMe: rows.some((r) => r.follower_id === creatorId && r.creator_id === user.id),
+  };
+}
+
 export async function followCreator(creatorId: string): Promise<void> {
   const s = db();
   const { data: { user } } = await s.auth.getUser();

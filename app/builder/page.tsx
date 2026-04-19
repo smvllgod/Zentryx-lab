@@ -424,40 +424,51 @@ function BuilderInner() {
   }, [leftOpen, rightOpen]);
 
   // Topbar actions (hidden in fullscreen, duplicated in the in-canvas toolbar).
+  // Laptops ≤ 1440px can't fit all 9 buttons + the title bar — we use a
+  // horizontal scroller with emerald fade edges so the overflow is visible.
   const topbarActions = (
-    <div className="hidden md:flex items-center gap-2">
-      <Button asChild variant="ghost" size="sm" title="Start a new strategy from a template">
-        <a href="/templates"><Sparkles size={14} /> Templates</a>
-      </Button>
-      <Button variant="ghost" size="sm" onClick={undo}>
-        <Undo2 size={14} /> Undo
-      </Button>
-      <Button variant="ghost" size="sm" onClick={redo}>
-        <Redo2 size={14} /> Redo
-      </Button>
-      <Button variant="secondary" size="sm" onClick={handleValidate}>
-        <Play size={14} /> Validate
-      </Button>
-      <Button variant="secondary" size="sm" onClick={() => setPreviewOpen(true)}>
-        <Code2 size={14} /> Preview code
-      </Button>
-      <Button variant="secondary" size="sm" onClick={() => setAppearanceOpen(true)}>
-        <Paintbrush size={14} /> Appearance
-      </Button>
-      <Button variant="secondary" size="sm" onClick={() => setProtectionOpen(true)}>
-        <ShieldCheck size={14} /> Protection
-        {countEnabledProtections(protections) > 0 && (
-          <span className="inline-flex items-center rounded-full bg-emerald-500 text-white text-[9px] font-700 w-4 h-4 justify-center ml-0.5">
-            {countEnabledProtections(protections)}
-          </span>
-        )}
-      </Button>
-      <Button variant="secondary" size="sm" onClick={handleExport}>
-        <Download size={14} /> Export .mq5
-      </Button>
-      <Button size="sm" onClick={handleSave} disabled={saving}>
-        <Save size={14} /> {saving ? "Saving…" : "Save"}
-      </Button>
+    <div className="hidden md:flex items-center relative max-w-full">
+      {/* Left fade — only visible when scrolled, always rendered so layout doesn't jump. */}
+      <div aria-hidden className="pointer-events-none absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-white to-transparent z-10 opacity-80" />
+      {/* Right fade hints there's more to see. */}
+      <div aria-hidden className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white to-transparent z-10 opacity-95" />
+      <div
+        className="flex items-center gap-2 overflow-x-auto no-scrollbar px-1 snap-x"
+        title="Scroll horizontally for more actions"
+      >
+        <Button asChild variant="ghost" size="sm" title="Start a new strategy from a template" className="shrink-0 snap-start">
+          <a href="/templates"><Sparkles size={14} /> Templates</a>
+        </Button>
+        <Button variant="ghost" size="sm" onClick={undo} className="shrink-0">
+          <Undo2 size={14} /> Undo
+        </Button>
+        <Button variant="ghost" size="sm" onClick={redo} className="shrink-0">
+          <Redo2 size={14} /> Redo
+        </Button>
+        <Button variant="secondary" size="sm" onClick={handleValidate} className="shrink-0">
+          <Play size={14} /> Validate
+        </Button>
+        <Button variant="secondary" size="sm" onClick={() => setPreviewOpen(true)} className="shrink-0">
+          <Code2 size={14} /> Preview code
+        </Button>
+        <Button variant="secondary" size="sm" onClick={() => setAppearanceOpen(true)} className="shrink-0">
+          <Paintbrush size={14} /> Appearance
+        </Button>
+        <Button variant="secondary" size="sm" onClick={() => setProtectionOpen(true)} className="shrink-0">
+          <ShieldCheck size={14} /> Protection
+          {countEnabledProtections(protections) > 0 && (
+            <span className="inline-flex items-center rounded-full bg-emerald-500 text-white text-[9px] font-700 w-4 h-4 justify-center ml-0.5">
+              {countEnabledProtections(protections)}
+            </span>
+          )}
+        </Button>
+        <Button variant="secondary" size="sm" onClick={handleExport} className="shrink-0">
+          <Download size={14} /> Export .mq5
+        </Button>
+        <Button size="sm" onClick={handleSave} disabled={saving} className="shrink-0 snap-end">
+          <Save size={14} /> {saving ? "Saving…" : "Save"}
+        </Button>
+      </div>
     </div>
   );
 

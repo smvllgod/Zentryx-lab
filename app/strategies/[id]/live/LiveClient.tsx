@@ -52,8 +52,16 @@ function LiveInner({ id }: { id: string }) {
   const [token, setToken] = useState<string | null>(null);
   const [events, setEvents] = useState<TelemetryEvent[]>([]);
   const [stats, setStats] = useState<LiveStats | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [tokenCopied, setTokenCopied] = useState(false);
+  const [urlCopied, setUrlCopied] = useState(false);
   const [rotating, setRotating] = useState(false);
+  const [endpoint, setEndpoint] = useState<string>("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setEndpoint(`${window.location.origin}/.netlify/functions/strategy-telemetry`);
+    }
+  }, []);
 
   async function load() {
     if (!id) return;
@@ -91,12 +99,23 @@ function LiveInner({ id }: { id: string }) {
     return pts;
   }, [events]);
 
-  async function handleCopy() {
+  async function copyToken() {
     if (!token) return;
     try {
       await navigator.clipboard.writeText(token);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      setTokenCopied(true);
+      setTimeout(() => setTokenCopied(false), 1500);
+    } catch {
+      toast.error("Copy failed — grab it manually.");
+    }
+  }
+
+  async function copyUrl() {
+    if (!endpoint) return;
+    try {
+      await navigator.clipboard.writeText(endpoint);
+      setUrlCopied(true);
+      setTimeout(() => setUrlCopied(false), 1500);
     } catch {
       toast.error("Copy failed — grab it manually.");
     }
@@ -137,7 +156,16 @@ function LiveInner({ id }: { id: string }) {
       ) : !user ? (
         <Card><CardContent><EmptyState icon={<Radio size={18} />} title="Sign in" description="Sign in to see your live telemetry." /></CardContent></Card>
       ) : events.length === 0 ? (
-        <EmptyStateBoard token={token} onCopy={handleCopy} copied={copied} onRotate={handleRotate} rotating={rotating} />
+        <EmptyStateBoard
+          token={token}
+          endpoint={endpoint}
+          onCopyToken={copyToken}
+          tokenCopied={tokenCopied}
+          onCopyUrl={copyUrl}
+          urlCopied={urlCopied}
+          onRotate={handleRotate}
+          rotating={rotating}
+        />
       ) : (
         <>
           {/* Top stats band */}
@@ -159,7 +187,16 @@ function LiveInner({ id }: { id: string }) {
           {/* Token block */}
           <Card className="mb-4">
             <CardContent>
-              <TokenBlock token={token} onCopy={handleCopy} copied={copied} onRotate={handleRotate} rotating={rotating} />
+              <TokenBlock
+                token={token}
+                endpoint={endpoint}
+                onCopyToken={copyToken}
+                tokenCopied={tokenCopied}
+                onCopyUrl={copyUrl}
+                urlCopied={urlCopied}
+                onRotate={handleRotate}
+                rotating={rotating}
+              />
             </CardContent>
           </Card>
 
@@ -280,7 +317,18 @@ function TelemetryTable({ events }: { events: TelemetryEvent[] }) {
   );
 }
 
-function TokenBlock({ token, onCopy, copied, onRotate, rotating }: { token: string | null; onCopy: () => void; copied: boolean; onRotate: () => void; rotating: boolean }) {
+interface TokenBlockProps {
+  token: string | null;
+  endpoint: string;
+  onCopyToken: () => void;
+  tokenCopied: boolean;
+  onCopyUrl: () => void;
+  urlCopied: boolean;
+  onRotate: () => void;
+  rotating: boolean;
+}
+
+function TokenBlock({ token, endpoint, onCopyToken, tokenCopied, onCopyUrl, urlCopied, onRotate, rotating }: TokenBlockProps) {
   return (
     <div>
       <div className="flex items-start justify-between gap-3 mb-3">
@@ -290,24 +338,40 @@ function TokenBlock({ token, onCopy, copied, onRotate, rotating }: { token: stri
             Your telemetry token
           </h3>
           <p className="mt-1 text-xs text-gray-500 max-w-lg">
-            Already baked into the MQL5 you export — nothing to configure in MT5 beyond whitelisting the URL.
+            Already baked into the MQL5 you export — nothing to configure in MT5 beyond whitelisting the URL below.
           </p>
         </div>
         <Button size="sm" variant="ghost" onClick={onRotate} disabled={rotating}>
           <RefreshCw size={12} /> {rotating ? "Rotating…" : "Rotate"}
         </Button>
       </div>
+
+      {/* Token row */}
       <div className="rounded-lg border border-gray-200 bg-gray-50 p-2 flex items-center justify-between gap-2">
         <code className="text-[11px] font-mono text-gray-800 truncate">{token ?? "— none yet —"}</code>
-        <Button size="sm" variant="ghost" onClick={onCopy} disabled={!token}>
-          {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? "Copied" : "Copy"}
+        <Button size="sm" variant="ghost" onClick={onCopyToken} disabled={!token}>
+          {tokenCopied ? <Check size={12} /> : <Copy size={12} />} {tokenCopied ? "Copied" : "Copy"}
         </Button>
       </div>
+
+      {/* Endpoint URL — the thing the user pastes into MT5's whitelist */}
+      <div className="mt-3">
+        <div className="text-[10px] font-700 uppercase tracking-widest text-gray-400 mb-1.5">
+          WebRequest URL (whitelist this in MT5)
+        </div>
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-2 flex items-center justify-between gap-2">
+          <code className="text-[11px] font-mono text-emerald-800 truncate">{endpoint || "— load page to read —"}</code>
+          <Button size="sm" variant="ghost" onClick={onCopyUrl} disabled={!endpoint}>
+            {urlCopied ? <Check size={12} /> : <Copy size={12} />} {urlCopied ? "Copied" : "Copy"}
+          </Button>
+        </div>
+      </div>
+
       <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-[11px] text-amber-800 leading-relaxed flex gap-2">
         <AlertTriangle size={12} className="shrink-0 mt-0.5" />
         <div>
-          <strong>Whitelist the URL in MT5 once:</strong> Tools → Options → Expert Advisors →
-          tick <em>"Allow WebRequest for listed URL"</em> and add the endpoint shown below.
+          <strong>Whitelist in MT5 once:</strong> Tools → Options → Expert Advisors →
+          tick <em>&ldquo;Allow WebRequest for listed URL&rdquo;</em> and paste the URL above.
           Otherwise MT5 blocks outbound POSTs and telemetry silently fails.
         </div>
       </div>
@@ -315,7 +379,7 @@ function TokenBlock({ token, onCopy, copied, onRotate, rotating }: { token: stri
   );
 }
 
-function EmptyStateBoard({ token, onCopy, copied, onRotate, rotating }: { token: string | null; onCopy: () => void; copied: boolean; onRotate: () => void; rotating: boolean }) {
+function EmptyStateBoard({ token, endpoint, onCopyToken, tokenCopied, onCopyUrl, urlCopied, onRotate, rotating }: TokenBlockProps) {
   return (
     <Card>
       <CardContent>
@@ -330,7 +394,16 @@ function EmptyStateBoard({ token, onCopy, copied, onRotate, rotating }: { token:
         </p>
 
         <div className="mt-5">
-          <TokenBlock token={token} onCopy={onCopy} copied={copied} onRotate={onRotate} rotating={rotating} />
+          <TokenBlock
+            token={token}
+            endpoint={endpoint}
+            onCopyToken={onCopyToken}
+            tokenCopied={tokenCopied}
+            onCopyUrl={onCopyUrl}
+            urlCopied={urlCopied}
+            onRotate={onRotate}
+            rotating={rotating}
+          />
         </div>
 
         <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
