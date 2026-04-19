@@ -38,7 +38,7 @@ export default function AboutPage() {
 
       <h2>Where we're going</h2>
       <p>
-        The public <a href="/roadmap.html">roadmap</a> is the authoritative source for what's next. Current priorities: in-browser backtest runner, strategy templates, Stripe billing, creator profiles, and MT4 export. See the roadmap for the full Tier 1/2/3 breakdown and 30-day plan.
+        Near-term focus is on deepening the platform where users already rely on it: faster iteration loops (in-browser backtesting, strategy templates), better distribution (creator profiles, marketplace improvements), and broader reach (MT4 export). We ship small, ship often, and announce what's shipped rather than what's promised.
       </p>
 
       <h2>Want to talk?</h2>
