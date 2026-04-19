@@ -15,6 +15,7 @@ import { getListing, type ListingRow } from "@/lib/marketplace/store";
 import type { PublicProfile } from "@/lib/profiles/client";
 import { countSetfilesForListing, listSetfilesForListing, type SetfileRow } from "@/lib/setfiles/client";
 import { buildListingBundle } from "@/lib/setfiles/bundle";
+import { useConfirm } from "@/components/ui/confirm";
 import { listReviews, myReviewFor, hasPurchased, writeReview, deleteReview, type ReviewRow } from "@/lib/marketplace/reviews";
 import { formatPrice, formatRelative } from "@/lib/utils/format";
 import { toast } from "@/components/ui/toast";
@@ -361,6 +362,7 @@ function ReviewForm({
   onSave: (rating: number, body: string) => Promise<void>;
   onDelete?: () => Promise<void>;
 }) {
+  const { confirm } = useConfirm();
   const [rating, setRating] = useState(existing?.rating ?? 0);
   const [hover, setHover] = useState<number | null>(null);
   const [body, setBody] = useState(existing?.body ?? "");
@@ -417,7 +419,15 @@ function ReviewForm({
                 type="button"
                 size="sm"
                 variant="ghost"
-                onClick={async () => { if (confirm("Delete your review?")) await onDelete(); }}
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: "Delete your review?",
+                    body: "Your rating stops counting toward the listing average.",
+                    destructive: true,
+                    confirmLabel: "Delete",
+                  });
+                  if (ok) await onDelete();
+                }}
               >
                 Delete
               </Button>

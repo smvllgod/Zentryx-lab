@@ -1,12 +1,14 @@
 // Browser-side CSV export. Works for any array-of-records.
 
+import { toast } from "@/components/ui/toast";
+
 export function downloadCsv<T>(
   filename: string,
   rows: T[],
   columns?: { key: keyof T | string; header?: string }[],
 ) {
   if (!rows.length) {
-    alert("No rows to export.");
+    toast.error("No rows to export.");
     return;
   }
   const cols: { key: keyof T | string; header?: string }[] =

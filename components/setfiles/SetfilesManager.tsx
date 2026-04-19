@@ -29,6 +29,7 @@ import {
   ACCEPTED_SETFILE_EXT,
   type SetfileRow,
 } from "@/lib/setfiles/client";
+import { useConfirm } from "@/components/ui/confirm";
 
 export interface SetfilesManagerProps {
   /** Attach new uploads to this listing. Changes the default scope. */
@@ -53,6 +54,7 @@ export function SetfilesManager(props: SetfilesManagerProps) {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const { confirm } = useConfirm();
 
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -100,7 +102,13 @@ export function SetfilesManager(props: SetfilesManagerProps) {
   }
 
   async function handleDelete(id: string, name: string) {
-    if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    const ok = await confirm({
+      title: `Delete "${name}"?`,
+      body: "The setfile and its bytes in storage are removed. This cannot be undone.",
+      destructive: true,
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     try {
       await deleteSetfile(id);
       toast.success("Deleted.");

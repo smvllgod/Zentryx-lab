@@ -3,6 +3,7 @@ import "./globals.css";
 import "@xyflow/react/dist/style.css";
 import { AuthProvider } from "@/lib/auth/context";
 import { Toaster } from "@/components/ui/toast";
+import { ConfirmProvider } from "@/components/ui/confirm";
 
 export const metadata: Metadata = {
   title: "Zentryx Lab — Build Your Trading Robot Without Code",
@@ -53,17 +54,19 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
       >
         <AuthProvider>
-          {children}
-          <Toaster
-            position="bottom-right"
-            toastOptions={{
-              style: {
-                borderRadius: "12px",
-                border: "1px solid #e5e7eb",
-                fontFamily: "inherit",
-              },
-            }}
-          />
+          <ConfirmProvider>
+            {children}
+            <Toaster
+              position="bottom-right"
+              toastOptions={{
+                style: {
+                  borderRadius: "12px",
+                  border: "1px solid #e5e7eb",
+                  fontFamily: "inherit",
+                },
+              }}
+            />
+          </ConfirmProvider>
         </AuthProvider>
       </body>
     </html>

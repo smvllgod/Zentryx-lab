@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { DateTimePicker } from "@/components/ui/calendar";
+import { useConfirm } from "@/components/ui/confirm";
 import { toast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth/context";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
@@ -167,8 +168,17 @@ function LicenseList({ rows, canRevoke, onReload }: { rows: LicenseRow[]; canRev
 }
 
 function LicenseRowView({ row, canRevoke, onReload }: { row: LicenseRow; canRevoke: boolean; onReload: () => void }) {
+  const { prompt } = useConfirm();
   async function handleRevoke() {
-    const reason = window.prompt("Reason for revoking (shown to the EA):", "Key revoked by issuer.");
+    const reason = await prompt({
+      title: "Revoke this license?",
+      body: "The next time this key re-validates from the EA, the server refuses it with the reason below. The reason shows up in the MT5 Journal.",
+      placeholder: "Chargeback / refund / lost key…",
+      defaultValue: "Key revoked by issuer.",
+      confirmLabel: "Revoke",
+      destructive: true,
+      multiline: true,
+    });
     if (reason === null) return;
     try {
       await revokeLicense(row.id, reason);

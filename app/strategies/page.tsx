@@ -19,6 +19,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm";
 import {
   createStrategy,
   deleteStrategy,
@@ -31,6 +32,7 @@ import { formatRelative } from "@/lib/utils/format";
 
 export default function StrategiesPage() {
   const { profile } = useAuth();
+  const { confirm } = useConfirm();
   const [rows, setRows] = useState<StrategyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -71,8 +73,14 @@ export default function StrategiesPage() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!window.confirm("Delete this strategy? This cannot be undone.")) return;
+  async function handleDelete(id: string, name?: string) {
+    const ok = await confirm({
+      title: name ? `Delete "${name}"?` : "Delete this strategy?",
+      body: "The strategy and all its versions are removed. Exports and any marketplace listing remain, but won't link back to a source graph.",
+      destructive: true,
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     try {
       await deleteStrategy(id);
       setRows((r) => r.filter((x) => x.id !== id));
@@ -139,7 +147,7 @@ export default function StrategiesPage() {
                   <Button asChild size="sm" variant="secondary" className="flex-1">
                     <a href={`/builder?id=${row.id}`}><Pencil size={12} /> Open builder</a>
                   </Button>
-                  <Button size="icon" variant="ghost" onClick={() => handleDelete(row.id)} aria-label="Delete">
+                  <Button size="icon" variant="ghost" onClick={() => handleDelete(row.id, row.name)} aria-label="Delete">
                     <Trash2 size={14} />
                   </Button>
                 </div>

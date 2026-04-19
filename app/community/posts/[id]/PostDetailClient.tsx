@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth/context";
+import { useConfirm } from "@/components/ui/confirm";
 import {
   getPost,
   listComments,
@@ -29,6 +30,7 @@ import { formatRelative } from "@/lib/utils/format";
 
 export default function PostDetailClient() {
   const { user } = useAuth();
+  const { confirm } = useConfirm();
   const [postId, setPostId] = useState<string>("");
 
   useEffect(() => {
@@ -157,7 +159,13 @@ export default function PostDetailClient() {
           {isAuthor && post.status === "pending" && (
             <div className="mt-6 flex items-center gap-2">
               <Button size="sm" variant="ghost" onClick={async () => {
-                if (!window.confirm("Delete this pending post?")) return;
+                const ok = await confirm({
+                  title: "Delete this pending post?",
+                  body: "Your post is removed — no moderator review, no trace. You can always create a new one.",
+                  destructive: true,
+                  confirmLabel: "Delete",
+                });
+                if (!ok) return;
                 try { await deleteMyPost(post.id); toast.success("Deleted."); window.location.href = "/community"; }
                 catch (err) { toast.error((err as Error).message); }
               }}>
@@ -224,6 +232,7 @@ export default function PostDetailClient() {
 }
 
 function CommentRow({ comment, viewerId, onDeleted }: { comment: CommentWithAuthor; viewerId: string | null; onDeleted: () => void }) {
+  const { confirm } = useConfirm();
   const mine = viewerId != null && viewerId === comment.author_id;
   return (
     <div className="rounded-xl border border-gray-100 bg-white p-3.5">
@@ -245,7 +254,13 @@ function CommentRow({ comment, viewerId, onDeleted }: { comment: CommentWithAuth
           <button
             type="button"
             onClick={async () => {
-              if (!window.confirm("Delete your comment?")) return;
+              const ok = await confirm({
+                title: "Delete your comment?",
+                body: "This can't be undone.",
+                destructive: true,
+                confirmLabel: "Delete",
+              });
+              if (!ok) return;
               try { await deleteMyComment(comment.id); toast.success("Deleted."); onDeleted(); }
               catch (err) { toast.error((err as Error).message); }
             }}

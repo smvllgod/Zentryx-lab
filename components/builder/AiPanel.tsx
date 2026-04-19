@@ -32,6 +32,7 @@ import { getSupabase } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/toast";
 import { NODE_DEFINITIONS } from "@/lib/strategies/nodes";
 import { executeTool, extractLastAssistantText, type DoneSummary } from "@/lib/ai/tools";
+import { useConfirm } from "@/components/ui/confirm";
 import {
   deleteConversation,
   listConversations,
@@ -79,6 +80,7 @@ type View = "chat" | "history";
 
 export function AiPanel({ graph, onGraphReplace, strategyId, onHighlightNode }: AiPanelProps) {
   const { user } = useAuth();
+  const { confirm } = useConfirm();
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<View>("chat");
   const [input, setInput] = useState("");
@@ -247,11 +249,17 @@ export function AiPanel({ graph, onGraphReplace, strategyId, onHighlightNode }: 
   }, [refreshConversations]);
 
   const onDeleteConversation = useCallback(async (id: string) => {
-    if (!window.confirm("Delete this conversation? Messages cannot be recovered.")) return;
+    const ok = await confirm({
+      title: "Delete this conversation?",
+      body: "All messages in this chat are removed. This cannot be undone.",
+      destructive: true,
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     await deleteConversation(id);
     if (conversationId === id) startNewChat();
     void refreshConversations();
-  }, [conversationId, refreshConversations, startNewChat]);
+  }, [conversationId, refreshConversations, startNewChat, confirm]);
 
   const onRenameConversation = useCallback(async (id: string, title: string) => {
     await renameConversation(id, title);
