@@ -110,7 +110,7 @@ export const TREND_BLOCKS: BlockDefinition[] = [
     subcategory: "flip",
     name: "Parabolic SAR Side",
     short: "SAR dots below (long-ok) / above (short-ok).",
-    plan: "pro", priority: "P2", complexity: "basic", status: "beta",
+    plan: "pro", priority: "P2", complexity: "basic",
     affects: ["filter"], mt5: true, tags: ["sar"],
     params: [
       { key: "step", label: "Step", kind: "number", default: 0.02,

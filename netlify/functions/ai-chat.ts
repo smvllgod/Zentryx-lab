@@ -32,6 +32,41 @@ const QUOTAS = {
   creator: { kind: "daily" as const, limit: 150 },
 };
 
+// ──────────────────────────────────────────────────────────────────
+// Burst rate limiter (per user, per function instance)
+// ──────────────────────────────────────────────────────────────────
+// Guards against a single user hammering the endpoint — independent of
+// the lifetime / daily quota, which only blocks after the caps are hit.
+// Backed by an in-memory Map keyed by user_id, keyed inside each
+// Netlify function instance. Netlify reuses warm instances, so the
+// limiter catches bursts from the same client within a few minutes.
+// A cold start resets the counter, which is intentional — the
+// persistent quota still enforces correctness; this layer is just a
+// cheap first-line guard against accidental loops.
+//
+// Window: 60 seconds. Limit: 10 requests. ~1 req / 6s steady-state.
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 10;
+const rateBuckets = new Map<string, { windowStart: number; count: number }>();
+
+function checkRateLimit(userId: string): { allowed: boolean; retryAfterSec: number } {
+  const now = Date.now();
+  const bucket = rateBuckets.get(userId);
+  if (!bucket || now - bucket.windowStart >= RATE_LIMIT_WINDOW_MS) {
+    rateBuckets.set(userId, { windowStart: now, count: 1 });
+    return { allowed: true, retryAfterSec: 0 };
+  }
+  if (bucket.count >= RATE_LIMIT_MAX) {
+    const retryAfterSec = Math.max(
+      1,
+      Math.ceil((RATE_LIMIT_WINDOW_MS - (now - bucket.windowStart)) / 1000),
+    );
+    return { allowed: false, retryAfterSec };
+  }
+  bucket.count++;
+  return { allowed: true, retryAfterSec: 0 };
+}
+
 // Tools passed to Claude — mirror of lib/ai/tools.ts TOOL_SCHEMAS.
 // Defined here (duplicated) because Netlify Functions are bundled
 // separately and shouldn't import browser-targeted client code.
@@ -200,6 +235,26 @@ export default async (req: Request, _ctx: Context) => {
     return json({ ok: false, error: "unauthorized", message: "Invalid session." }, 401);
   }
   const user = userData.user;
+
+  // ── Burst rate limit (per user, per function instance)
+  const rl = checkRateLimit(user.id);
+  if (!rl.allowed) {
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: "rate_limited",
+        message: `Too many requests — retry in ${rl.retryAfterSec}s.`,
+        retryAfterSec: rl.retryAfterSec,
+      }),
+      {
+        status: 429,
+        headers: {
+          "content-type": "application/json",
+          "retry-after": String(rl.retryAfterSec),
+        },
+      },
+    );
+  }
 
   // ── Resolve plan
   const { data: profile } = await admin

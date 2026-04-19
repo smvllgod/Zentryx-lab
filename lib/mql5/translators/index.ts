@@ -41,6 +41,30 @@ import { translate_manage_partialClose } from "./manage-partialClose";
 import { translate_utility_oneTradeAtTime } from "./utility-oneTradeAtTime";
 import { translate_utility_maxOpenPositions } from "./utility-maxOpenPositions";
 import { translate_utility_onlyNewBar } from "./utility-onlyNewBar";
+import { translate_utility_emergencyStop } from "./utility-emergencyStop";
+
+// ── Batch 1 (2026-04): high-value promotions ────────────────────────
+import { translate_trend_smaDirection } from "./trend-smaDirection";
+import { translate_trend_parabolicSar } from "./trend-parabolicSar";
+import { translate_confirm_macdSide } from "./confirm-macdSide";
+import { translate_confirm_priceAboveMa } from "./confirm-priceAboveMa";
+import { translate_confirm_emaAlignment } from "./confirm-emaAlignment";
+import { translate_confirm_barColor } from "./confirm-barColor";
+import { translate_momentum_stochBand } from "./momentum-stochBand";
+import { translate_momentum_cciBand } from "./momentum-cciBand";
+import { translate_vol_atrAboveAverage } from "./vol-atrAboveAverage";
+import { translate_vol_bbWidth } from "./vol-bbWidth";
+import { translate_session_newYork } from "./session-newYork";
+import { translate_session_asia } from "./session-asia";
+import { translate_session_dayOfWeek } from "./session-dayOfWeek";
+import { translate_exec_spreadRatio } from "./exec-spreadRatio";
+import { translate_exit_endOfDay } from "./exit-endOfDay";
+import { translate_exit_equityTargetExit } from "./exit-equityTargetExit";
+import { translate_lot_perBalance } from "./lot-perBalance";
+import { translate_lot_percentOfAccount } from "./lot-percentOfAccount";
+import { translate_manage_breakEvenAtrMulti } from "./manage-breakEvenAtrMulti";
+import { translate_mtf_higherTfRsi } from "./mtf-higherTfRsi";
+import { translate_mtf_dailyBias } from "./mtf-dailyBias";
 
 // Any node type not present here is treated as a "stub": the compiler
 // emits a warning diagnostic and skips code generation for that node,
@@ -96,6 +120,30 @@ export const TRANSLATORS: Partial<Record<NodeType, Translator>> = {
   "utility.oneTradeAtTime": translate_utility_oneTradeAtTime,
   "utility.maxOpenPositions": translate_utility_maxOpenPositions,
   "utility.onlyNewBar": translate_utility_onlyNewBar,
+  "utility.emergencyStop": translate_utility_emergencyStop,
+
+  // ── Batch 1: newly-live translators ─────────────────────────────
+  "trend.smaDirection": translate_trend_smaDirection,
+  "trend.parabolicSar": translate_trend_parabolicSar,
+  "confirm.macdSide": translate_confirm_macdSide,
+  "confirm.priceAboveMa": translate_confirm_priceAboveMa,
+  "confirm.emaAlignment": translate_confirm_emaAlignment,
+  "confirm.barColor": translate_confirm_barColor,
+  "momentum.stochBand": translate_momentum_stochBand,
+  "momentum.cciBand": translate_momentum_cciBand,
+  "vol.atrAboveAverage": translate_vol_atrAboveAverage,
+  "vol.bbWidth": translate_vol_bbWidth,
+  "session.newYork": translate_session_newYork,
+  "session.asia": translate_session_asia,
+  "session.dayOfWeek": translate_session_dayOfWeek,
+  "exec.spreadRatio": translate_exec_spreadRatio,
+  "exit.endOfDay": translate_exit_endOfDay,
+  "exit.equityTargetExit": translate_exit_equityTargetExit,
+  "lot.perBalance": translate_lot_perBalance,
+  "lot.percentOfAccount": translate_lot_percentOfAccount,
+  "manage.breakEvenAtrMulti": translate_manage_breakEvenAtrMulti,
+  "mtf.higherTfRsi": translate_mtf_higherTfRsi,
+  "mtf.dailyBias": translate_mtf_dailyBias,
 };
 
 export function hasTranslator(node: StrategyNode): boolean {
