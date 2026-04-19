@@ -239,6 +239,7 @@ export interface Database {
           strategy_id: string;
           user_id: string;
           version_id: string | null;
+          license_id: string | null;
           filename: string;
           source: string;
           created_at: string;
@@ -292,6 +293,7 @@ export interface Database {
           currency: string;
           status: "pending" | "paid" | "refunded" | "failed";
           stripe_payment_intent: string | null;
+          license_id: string | null;
           created_at: string;
         };
         Insert: Omit<
@@ -299,6 +301,73 @@ export interface Database {
           "id" | "created_at"
         > & { id?: string; created_at?: string };
         Update: Partial<Database["public"]["Tables"]["purchases"]["Insert"]>;
+      };
+      licenses: {
+        Row: {
+          id: string;
+          user_id: string;
+          strategy_id: string | null;
+          listing_id: string | null;
+          purchase_id: string | null;
+          buyer_id: string | null;
+          buyer_email: string | null;
+          key_hash: string;
+          key_prefix: string;
+          bound_account: number | null;
+          bound_broker: string | null;
+          bound_server: string | null;
+          expires_at: string | null;
+          max_activations: number | null;
+          revoked: boolean;
+          revoked_at: string | null;
+          revoke_reason: string | null;
+          label: string | null;
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["licenses"]["Row"],
+          "id" | "created_at" | "updated_at" | "revoked" | "metadata"
+        > & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+          revoked?: boolean;
+          metadata?: Json;
+        };
+        Update: Partial<Database["public"]["Tables"]["licenses"]["Insert"]>;
+      };
+      license_activations: {
+        Row: {
+          id: string;
+          license_id: string | null;
+          key_hash: string;
+          account_login: number | null;
+          broker: string | null;
+          server: string | null;
+          terminal_company: string | null;
+          client_ip: string | null;
+          country: string | null;
+          user_agent: string | null;
+          result:
+            | "valid"
+            | "invalid_key"
+            | "expired"
+            | "revoked"
+            | "wrong_account"
+            | "wrong_broker"
+            | "max_activations"
+            | "grace"
+            | "rate_limited"
+            | "malformed";
+          created_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["license_activations"]["Row"], "id" | "created_at"> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["license_activations"]["Insert"]>;
       };
       reviews: {
         Row: {

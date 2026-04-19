@@ -80,6 +80,13 @@ export type Translator = (
 export interface CompileOptions {
   /** Optional override for EA name. Defaults to graph.metadata.name. */
   eaName?: string;
+  /**
+   * Protection Panel configuration — optional. When provided, the
+   * compiler emits MQL5 code enforcing each enabled protection block
+   * (account lock, expiry, license key, etc.) alongside the canvas
+   * translators. See lib/mql5/protections.ts for the shape.
+   */
+  protections?: import("./protections").ProtectionConfig;
 }
 
 export interface CompileResult {

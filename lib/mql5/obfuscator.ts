@@ -1,31 +1,37 @@
 // ──────────────────────────────────────────────────────────────────
-// MQL5 obfuscator — Free-tier IP protection without a real compiler.
+// MQL5 post-pass: watermark + obfuscation
 // ──────────────────────────────────────────────────────────────────
-// Goal: the output still compiles in MetaEditor and behaves identically,
-// but someone opening the file in a text editor sees no human-readable
-// logic, no helper names, no comments.
+// Two independent source-level transforms, applied after codegen:
 //
-// Strategy:
-//   1. Rename every identifier WE generate (patterns: Inp*, h* with
-//      `_<hash>` suffix, our Zx* helpers, our internal function names).
-//      We never touch MQL5 reserved words, std-lib identifiers, or
-//      MetaQuotes Trade class methods — those must stay intact.
-//   2. Strip "// ..." single-line comments EXCEPT the ones that label
-//      an `input` declaration (MT5 shows these in the Strategy Tester
-//      UI — stripping would make the EA unusable).
-//   3. Strip /* ... */ block comments entirely (always internal).
-//   4. Collapse runs of whitespace on intra-line boundaries while
-//      keeping line breaks so the file stays diff-stable.
-//   5. Prepend an invisible watermark: a commented user id + timestamp
-//      so leaked files trace back to a specific account.
+//  • Watermark — prepends a comment header (buyer id, timestamp, notice).
+//    Used both by the Free-tier auto-watermark and by the user-facing
+//    `protection.watermark` block on Pro/Creator exports.
+//
+//  • Obfuscation — renames every identifier WE generate, strips
+//    comments, collapses whitespace. The output still compiles in
+//    MetaEditor but hides logic from a casual reader.
+//
+// Both transforms are optional and independent: you can watermark
+// without obfuscating, or obfuscate without watermarking. For Free
+// tier we still apply both by default — see `obfuscateMql5()` below,
+// kept as a convenience wrapper with the legacy signature.
 // ──────────────────────────────────────────────────────────────────
 
-interface ObfuscateOptions {
-  /** Account id or email — goes into the watermark comment. */
+export interface WatermarkOptions {
+  /** Identifier shown in the header comment (user id, email, buyer id). */
   userId?: string;
-  /** ISO timestamp of the export — for traceability. */
+  /** ISO timestamp of the export — for traceability. Omit to suppress. */
   exportedAt?: string;
+  /** Additional free-form line appended to the header (e.g. license id). */
+  extraNote?: string;
 }
+
+export interface ObfuscationOptions {
+  /** minimal: rename helpers only. aggressive: rename + strip everything. */
+  level?: "minimal" | "aggressive";
+}
+
+interface ObfuscateOptions extends WatermarkOptions, ObfuscationOptions {}
 
 // Identifiers that start with these prefixes are ours and safe to rename.
 // Every name generator in lib/mql5/translators and lib/mql5/template uses
@@ -61,7 +67,16 @@ function nextName(index: number): string {
   return `_${a}${b}`;
 }
 
-export function obfuscateMql5(source: string, opts: ObfuscateOptions = {}): string {
+/**
+ * Apply obfuscation only — rename owned identifiers, strip comments.
+ * Does NOT prepend a watermark; call `applyWatermark()` separately if
+ * you need that. `level` controls aggressiveness:
+ *   minimal    — rename identifiers but keep input labels and structure
+ *   aggressive — also strip block/line comments and collapse whitespace
+ */
+export function applyObfuscation(source: string, opts: ObfuscationOptions = {}): string {
+  const level = opts.level ?? "aggressive";
+
   // ── Pass 1: find every owned identifier
   const idRe = /\b[A-Za-z_][A-Za-z0-9_]*\b/g;
   const owned = new Set<string>();
@@ -96,7 +111,9 @@ export function obfuscateMql5(source: string, opts: ObfuscateOptions = {}): stri
     out = out.replace(re, replacement);
   }
 
-  // ── Pass 3: strip comments.
+  if (level === "minimal") return out;
+
+  // ── Aggressive: strip comments & collapse whitespace.
   // Block comments (always internal) — remove entirely.
   out = out.replace(/\/\*[\s\S]*?\*\//g, "");
 
@@ -113,19 +130,41 @@ export function obfuscateMql5(source: string, opts: ObfuscateOptions = {}): stri
     .filter((line) => line.trim().length > 0)
     .join("\n");
 
-  // ── Pass 4: collapse horizontal whitespace (preserve newlines).
+  // Collapse horizontal whitespace (preserve newlines).
   out = out.replace(/[ \t]+/g, " ").replace(/ ?\n /g, "\n");
 
-  // ── Pass 5: watermark + banner
-  const watermark =
-    `//+-----------------------------------------------------------------+\n` +
-    `// Zentryx Lab — protected export\n` +
-    `// account: ${opts.userId ?? "anonymous"}\n` +
-    `// exported: ${opts.exportedAt ?? new Date().toISOString()}\n` +
-    `// Reverse-engineering, redistribution, or resale is prohibited.\n` +
-    `//+-----------------------------------------------------------------+\n`;
+  return out;
+}
 
-  return watermark + out;
+/**
+ * Prepend a watermark comment header. Purely additive — the source is
+ * otherwise untouched, so combining with obfuscation is safe.
+ */
+export function applyWatermark(source: string, opts: WatermarkOptions = {}): string {
+  const lines: string[] = [
+    `//+-----------------------------------------------------------------+`,
+    `// Zentryx Lab — protected export`,
+  ];
+  if (opts.userId) lines.push(`// account: ${opts.userId}`);
+  if (opts.exportedAt) lines.push(`// exported: ${opts.exportedAt}`);
+  if (opts.extraNote) lines.push(`// ${opts.extraNote}`);
+  lines.push(`// Reverse-engineering, redistribution, or resale is prohibited.`);
+  lines.push(`//+-----------------------------------------------------------------+`);
+  return lines.join("\n") + "\n" + source;
+}
+
+/**
+ * Legacy convenience wrapper — Free-tier path still calls this with
+ * `userId` + `exportedAt`. Equivalent to aggressive obfuscation followed
+ * by a watermark. New code should prefer the split functions.
+ */
+export function obfuscateMql5(source: string, opts: ObfuscateOptions = {}): string {
+  const obf = applyObfuscation(source, { level: opts.level ?? "aggressive" });
+  return applyWatermark(obf, {
+    userId: opts.userId,
+    exportedAt: opts.exportedAt ?? new Date().toISOString(),
+    extraNote: opts.extraNote,
+  });
 }
 
 function escapeRegex(s: string): string {

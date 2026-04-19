@@ -20,6 +20,7 @@ import {
   Trash2,
   Sparkles,
   Paintbrush,
+  ShieldCheck,
 } from "lucide-react";
 import { AppShell } from "@/components/app/shell";
 import { Button } from "@/components/ui/button";
@@ -56,7 +57,9 @@ import {
 import { validateStrategy } from "@/lib/strategies/validators";
 import { summarizeStrategy } from "@/lib/strategies/summary";
 import { compileStrategy, sanitizeFilename } from "@/lib/mql5/compiler";
-import { obfuscateMql5 } from "@/lib/mql5/obfuscator";
+import { applyObfuscation, applyWatermark, obfuscateMql5 } from "@/lib/mql5/obfuscator";
+import type { ProtectionConfig } from "@/lib/mql5/protections";
+import { ProtectionPanel } from "@/components/builder/ProtectionPanel";
 import {
   createStrategy,
   getStrategy,
@@ -106,6 +109,8 @@ export default function BuilderPage() {
   const [saving, setSaving] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [protectionOpen, setProtectionOpen] = useState(false);
+  const [protections, setProtections] = useState<ProtectionConfig>({});
   const [gateOpen, setGateOpen] = useState(false);
   const [gateList, setGateList] = useState<NodeType[]>([]);
 
@@ -170,19 +175,34 @@ export default function BuilderPage() {
 
   const validation = useMemo(() => validateStrategy(graph), [graph]);
   const summary = useMemo(() => summarizeStrategy(graph), [graph]);
-  const compiled = useMemo(() => compileStrategy(graph), [graph]);
+  const compiled = useMemo(() => compileStrategy(graph, { protections }), [graph, protections]);
 
-  // Free-tier users receive an obfuscated build (renamed identifiers,
-  // comments stripped, watermarked with their account id). Pro/Creator
-  // always see the clean source. Computed here so both the in-dialog
-  // preview and the downloaded file stay byte-identical.
+  // Source delivered to the user at export time. Pipeline:
+  //   Free tier → always obfuscate + auto-watermark (legacy path).
+  //   Pro/Creator → apply the Protection Panel's obfuscation/watermark
+  //   opt-ins if any. Runtime gates (account lock, license key, etc.)
+  //   are baked into `compiled.source` by `compileStrategy` directly.
   const deliveredSource = useMemo(() => {
-    if (preview.ok) return compiled.source;
-    return obfuscateMql5(compiled.source, {
-      userId: user?.id ?? profile?.email ?? "free-user",
-      exportedAt: new Date().toISOString(),
-    });
-  }, [compiled.source, preview.ok, user?.id, profile?.email]);
+    let source = compiled.source;
+    if (!preview.ok) {
+      return obfuscateMql5(source, {
+        userId: user?.id ?? profile?.email ?? "free-user",
+        exportedAt: new Date().toISOString(),
+      });
+    }
+    if (protections.obfuscation) {
+      source = applyObfuscation(source, protections.obfuscation);
+    }
+    if (protections.watermark) {
+      source = applyWatermark(source, {
+        userId: protections.watermark.buyerId || user?.email || user?.id,
+        exportedAt: protections.watermark.includeTimestamp
+          ? new Date().toISOString()
+          : undefined,
+      });
+    }
+    return source;
+  }, [compiled.source, preview.ok, user, profile?.email, protections]);
 
   const selectedNode: StrategyNode | null =
     graph.nodes.find((n) => n.id === selectedId) ?? null;
@@ -394,6 +414,14 @@ export default function BuilderPage() {
       </Button>
       <Button variant="secondary" size="sm" onClick={() => setAppearanceOpen(true)}>
         <Paintbrush size={14} /> Appearance
+      </Button>
+      <Button variant="secondary" size="sm" onClick={() => setProtectionOpen(true)}>
+        <ShieldCheck size={14} /> Protection
+        {countEnabledProtections(protections) > 0 && (
+          <span className="inline-flex items-center rounded-full bg-emerald-500 text-white text-[9px] font-700 w-4 h-4 justify-center ml-0.5">
+            {countEnabledProtections(protections)}
+          </span>
+        )}
       </Button>
       <Button variant="secondary" size="sm" onClick={handleExport}>
         <Download size={14} /> Export .mq5
@@ -712,8 +740,59 @@ export default function BuilderPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={protectionOpen} onOpenChange={setProtectionOpen}>
+        <DialogContent className="max-w-2xl w-[94vw] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span className="inline-flex w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 items-center justify-center">
+                <ShieldCheck size={14} />
+              </span>
+              Protection & licensing
+            </DialogTitle>
+            <DialogDescription>
+              Runtime checks and distribution controls baked into the exported <code className="text-xs">.mq5</code>.
+              Enable what you want to enforce; settings apply at the next export.
+            </DialogDescription>
+          </DialogHeader>
+          <ProtectionPanel
+            value={protections}
+            onChange={setProtections}
+            plan={plan}
+            hideWatermark={!preview.ok}
+            showObfuscation={preview.ok}
+          />
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="secondary">Close</Button>
+            </DialogClose>
+            <Button
+              onClick={() => {
+                setProtectionOpen(false);
+                void handleExport();
+              }}
+              disabled={!validation.ok}
+            >
+              <Download size={14} /> Export with protections
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
+}
+
+function countEnabledProtections(config: ProtectionConfig): number {
+  let n = 0;
+  if (config.accountLock?.accounts.length) n++;
+  if (config.expiryDate?.expiresAt) n++;
+  if (config.brokerLock?.allowedCompany) n++;
+  if (config.demoOnly) n++;
+  if (config.licenseKey?.server) n++;
+  if (config.ipLock?.allowedCountries.length) n++;
+  if (config.watermark) n++;
+  if (config.obfuscation) n++;
+  return n;
 }
 
 function CollapsedRail({

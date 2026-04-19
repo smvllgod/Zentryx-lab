@@ -28,7 +28,10 @@ export type AdminAction =
   | "block.override_clear"
   | "feature_flag.toggle"
   | "setting.update"
-  | "user.impersonate";
+  | "user.impersonate"
+  | "license.issue"
+  | "license.revoke"
+  | "license.update";
 
 interface LogArgs {
   action: AdminAction;

@@ -14,6 +14,7 @@ import {
   Settings,
   ScrollText,
   ArrowLeft,
+  KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -32,6 +33,7 @@ const NAV: NavItem[] = [
   { href: "/admin/exports",         label: "Exports",        icon: Download,        group: "platform" },
   { href: "/admin/marketplace",     label: "Marketplace",    icon: Store,           group: "platform" },
   { href: "/admin/creators",        label: "Creators",       icon: Crown,           group: "platform" },
+  { href: "/admin/licenses",        label: "Licenses",       icon: KeyRound,        group: "platform" },
 
   { href: "/admin/blocks",          label: "Logic Blocks",   icon: Boxes,           group: "control" },
   { href: "/admin/flags",           label: "Flags / Control",icon: Flag,            group: "control" },

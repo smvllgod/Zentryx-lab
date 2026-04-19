@@ -5,6 +5,7 @@ import type { CompileOptions, CompileResult, SectionContribution } from "./types
 import { TRANSLATORS } from "./translators";
 import { assemble } from "./template";
 import { renderAppearance } from "./appearance-renderer";
+import { translateProtections } from "./protections";
 
 // ──────────────────────────────────────────────────────────────────
 // Compiler pipeline
@@ -98,6 +99,24 @@ export function compileStrategy(
         level: "warning",
         code: "appearance_failed",
         message: `Appearance renderer failed: ${(err as Error).message}. EA compiled without the chart panel.`,
+      });
+    }
+  }
+
+  // Protection blocks — account lock / expiry / broker lock / demo-only /
+  // license key / IP lock. Enabled from the Protection Panel at export
+  // time. Watermark and obfuscation are handled as a source-level
+  // post-pass (see lib/mql5/obfuscator.ts), not here.
+  if (options.protections) {
+    try {
+      for (const contribution of translateProtections(options.protections)) {
+        collected.push(contribution);
+      }
+    } catch (err) {
+      diagnostics.push({
+        level: "warning",
+        code: "protection_failed",
+        message: `Protection codegen failed: ${(err as Error).message}. EA compiled without runtime protections.`,
       });
     }
   }

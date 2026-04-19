@@ -10,6 +10,7 @@ import {
   CreditCard,
   Settings,
   BookOpen,
+  KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -19,6 +20,7 @@ const NAV = [
   { href: "/builder",      label: "Builder",       icon: Workflow },
   { href: "/marketplace",  label: "Marketplace",   icon: Store },
   { href: "/exports",      label: "Exports",       icon: Download },
+  { href: "/licenses",     label: "Licenses",      icon: KeyRound },
   { href: "/docs",         label: "Docs",          icon: BookOpen },
   { href: "/billing",      label: "Billing",       icon: CreditCard },
   { href: "/settings",     label: "Settings",      icon: Settings },
