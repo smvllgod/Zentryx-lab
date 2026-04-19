@@ -173,6 +173,11 @@ function BuilderInner() {
         reset(safe);
         setStrategyId(row.id);
         setTelemetryToken((row as unknown as { telemetry_token?: string | null }).telemetry_token ?? null);
+        // Auto-fit after the canvas has mounted the new graph — otherwise
+        // templated strategies open zoomed-in on an arbitrary corner.
+        if (safe.nodes.length > 0) {
+          setTimeout(() => canvasRef.current?.fitView(), 120);
+        }
       } catch (err) {
         toast.error((err as Error).message);
       } finally {

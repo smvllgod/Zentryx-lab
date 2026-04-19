@@ -55,11 +55,57 @@ function nodeAt(
   };
 }
 
-function wire(nodes: Array<{ id: string }>): Array<{ id: string; source: string; target: string }> {
+/**
+ * Wire nodes by category flow so edges look sensible on the canvas.
+ * Flow: entry → filter / session / news → risk → lot → exit → management → grid → utility.
+ * Each category group fans from a single "anchor" in the previous column to
+ * every node in the current one; strictly linear chains inside a column.
+ */
+function wire(
+  nodes: Array<{ id: string; category: NodeCategory }>,
+): Array<{ id: string; source: string; target: string }> {
   const edges: Array<{ id: string; source: string; target: string }> = [];
-  for (let i = 0; i < nodes.length - 1; i++) {
-    edges.push({ id: nid(), source: nodes[i].id, target: nodes[i + 1].id });
+
+  // Category flow order; categories not in this list (grid, utility) trail on last.
+  const ORDER: NodeCategory[] = [
+    "entry",
+    "filter",
+    "session",
+    "news",
+    "risk",
+    "lot",
+    "exit",
+    "management",
+    "grid",
+    "utility",
+  ];
+
+  const byCat = new Map<NodeCategory, string[]>();
+  for (const n of nodes) {
+    const arr = byCat.get(n.category) ?? [];
+    arr.push(n.id);
+    byCat.set(n.category, arr);
   }
+
+  // Find the first non-empty group.
+  let prevAnchor: string | null = null;
+  for (const cat of ORDER) {
+    const ids = byCat.get(cat);
+    if (!ids || ids.length === 0) continue;
+
+    // Fan from the previous anchor to the first node of this group so
+    // the inter-group edge is visible and clean. Siblings inside a
+    // group get their own parallel edges from the previous anchor too,
+    // which shows the user the gate is applied to every node.
+    if (prevAnchor) {
+      for (const id of ids) {
+        edges.push({ id: nid(), source: prevAnchor, target: id });
+      }
+    }
+    // Anchor for the next group is the first node of this group.
+    prevAnchor = ids[0];
+  }
+
   return edges;
 }
 

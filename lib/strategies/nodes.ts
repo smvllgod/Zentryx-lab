@@ -859,11 +859,27 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
   },
 ];
 
+// Legacy map (40 V1 blocks with hand-written NodeDefinition rows).
+// Extended lazily on first call with blocks from the modular registry
+// (lib/blocks/*) so template strategies that reference trend/confirm/
+// exit/risk/utility nodes resolve without "Unknown node type" errors.
 const _byType = new Map<NodeType, NodeDefinition>(
   NODE_DEFINITIONS.map((d) => [d.type, d]),
 );
+let _byTypeExtended = false;
+
+function ensureExtended() {
+  if (_byTypeExtended) return;
+  _byTypeExtended = true;
+  for (const b of ALL_CANVAS_BLOCKS) {
+    const key = b.id as NodeType;
+    if (_byType.has(key)) continue;           // legacy wins for translator-wired ids
+    _byType.set(key, blockToNodeDefinition(b));
+  }
+}
 
 export function getNodeDefinition(type: NodeType): NodeDefinition | undefined {
+  ensureExtended();
   return _byType.get(type);
 }
 
