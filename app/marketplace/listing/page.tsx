@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/input";
+import { LivePerformanceBadge } from "@/components/marketplace/LivePerformanceBadge";
 import { getListing, type ListingRow } from "@/lib/marketplace/store";
 import type { PublicProfile } from "@/lib/profiles/client";
 import { countSetfilesForListing, listSetfilesForListing, type SetfileRow } from "@/lib/setfiles/client";
@@ -320,6 +321,10 @@ function ListingDetailInner() {
               <div className="flex items-baseline justify-between">
                 <div className="text-2xl font-700 text-gray-900">{priceLabel}</div>
                 {free && <Badge tone="emerald">Free download</Badge>}
+              </div>
+              {/* Live performance — only renders if the strategy is opted-in and has at least one reported trade. */}
+              <div className="mt-2">
+                <LivePerformanceBadge strategyId={listing.strategy_id} />
               </div>
               {listing.rating_count > 0 && (
                 <div className="mt-2 flex items-center gap-1.5 text-xs text-gray-500">

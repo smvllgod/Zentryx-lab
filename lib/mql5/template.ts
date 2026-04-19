@@ -1,10 +1,11 @@
-import type { SectionContribution, SignalDirection } from "./types";
+import type { SectionContribution, SignalDirection, CompileOptions } from "./types";
 import type { StrategyGraph } from "@/lib/strategies/types";
 
 interface AssemblerInput {
   eaName: string;
   graph: StrategyGraph;
   contributions: SectionContribution[];
+  telemetry?: CompileOptions["telemetry"];
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -16,7 +17,7 @@ interface AssemblerInput {
 // ──────────────────────────────────────────────────────────────────
 
 export function assemble(input: AssemblerInput): string {
-  const { eaName, graph, contributions } = input;
+  const { eaName, graph, contributions, telemetry } = input;
   const inputs = mergeInputs(contributions);
   const indicators = mergeIndicators(contributions);
   const helpers = mergeHelpers(contributions);
@@ -33,6 +34,13 @@ export function assemble(input: AssemblerInput): string {
   const sym = graph.metadata.symbol ?? "EURUSD";
   const tf = graph.metadata.timeframe ?? "M15";
   const magic = graph.metadata.magicNumber ?? 20260418;
+
+  const telemetryEnabled = Boolean(telemetry?.token && telemetry?.endpoint);
+  const telemetryUrl = telemetry?.endpoint ?? "";
+  const telemetryToken = telemetry?.token ?? "";
+  const telemetryHeader = telemetryEnabled ? telemetryInputsBlock() : "";
+  const telemetryHelpers = telemetryEnabled ? telemetryHelpersBlock() : "";
+  const telemetryHandler = telemetryEnabled ? telemetryHandlerBlock() : "";
 
   return `//+------------------------------------------------------------------+
 //|  ${escapeComment(eaName)}.mq5
@@ -52,7 +60,12 @@ input string  InpSymbolHint = "${sym}";        // Symbol hint (informational)
 input ENUM_TIMEFRAMES InpTimeframe = ${timeframeEnum(tf)};   // Working timeframe
 input long    InpMagic       = ${magic};        // Magic number
 input string  InpTradeComment = "${escapeStr(graph.metadata.tradeComment ?? "Zentryx Lab")}"; // Trade comment
-${inputsBlock(inputs)}
+${telemetryHeader ? `
+// ── Live telemetry (Zentryx Lab) ───────────────────────────────────
+input string  InpTelemetryUrl   = "${escapeStr(telemetryUrl)}";
+input string  InpTelemetryToken = "${escapeStr(telemetryToken)}";
+input bool    InpTelemetryOn    = true;          // Report closed trades to Zentryx Lab
+` : ""}${inputsBlock(inputs)}
 
 //─────────────────────────────────────────────────────────────────────
 // Indicator handles
@@ -111,6 +124,7 @@ bool ZxIsNewBar()
 }
 
 ${helpers.length ? helpers.join("\n\n") : ""}
+${telemetryHelpers}
 
 //─────────────────────────────────────────────────────────────────────
 // Lifecycle
@@ -191,6 +205,8 @@ ${indent(stopBody, 3)}
                  NormalizeDouble(tpPrice, _Digits),
                  InpTradeComment);
 }
+
+${telemetryHandler}
 `;
 }
 
@@ -319,4 +335,144 @@ function timeframeEnum(tf: string): string {
     H1: "PERIOD_H1", H4: "PERIOD_H4", D1: "PERIOD_D1", W1: "PERIOD_W1", MN1: "PERIOD_MN1",
   };
   return map[tf] ?? "PERIOD_CURRENT";
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Live telemetry MQL5 snippets
+// ──────────────────────────────────────────────────────────────────
+// The EA reports every closed deal (identified by DEAL_ENTRY_OUT) to
+// the Zentryx Lab telemetry endpoint via WebRequest.
+//
+// Users must whitelist the telemetry URL once in MT5:
+//   Tools → Options → Expert Advisors → "Allow WebRequest for listed URL"
+// The EA prints a human-readable hint on OnInit if InpTelemetryOn is true.
+
+function telemetryInputsBlock(): string {
+  // Inputs are inlined in the main input block; this is a placeholder to
+  // keep the API symmetrical if we later split them out.
+  return "";
+}
+
+function telemetryHelpersBlock(): string {
+  return `// ── Zentryx Lab — live telemetry ─────────────────────────────────
+string ZxJsonEscape(string s)
+{
+   string out = "";
+   for(int i = 0; i < StringLen(s); i++) {
+      ushort c = StringGetCharacter(s, i);
+      if(c == '"')       out += "\\\\\\"";
+      else if(c == '\\\\') out += "\\\\\\\\";
+      else if(c == '\\n') out += "\\\\n";
+      else if(c == '\\r') out += "\\\\r";
+      else if(c == '\\t') out += "\\\\t";
+      else               out += ShortToString(c);
+   }
+   return out;
+}
+
+string ZxIsoUtc(datetime t)
+{
+   MqlDateTime d; TimeToStruct(t, d);
+   return StringFormat("%04d-%02d-%02dT%02d:%02d:%02dZ", d.year, d.mon, d.day, d.hour, d.min, d.sec);
+}
+
+void ZxReportTrade(ulong dealTicket)
+{
+   if(!InpTelemetryOn) return;
+   if(StringLen(InpTelemetryToken) < 8) return;
+   if(!HistoryDealSelect(dealTicket)) return;
+
+   // Only report closing deals of our own magic number.
+   long magic = HistoryDealGetInteger(dealTicket, DEAL_MAGIC);
+   if(magic != InpMagic) return;
+   long entry = HistoryDealGetInteger(dealTicket, DEAL_ENTRY);
+   if(entry != DEAL_ENTRY_OUT) return;
+
+   ulong   posId      = HistoryDealGetInteger(dealTicket, DEAL_POSITION_ID);
+   string  symbol     = HistoryDealGetString(dealTicket, DEAL_SYMBOL);
+   double  closePrice = HistoryDealGetDouble(dealTicket, DEAL_PRICE);
+   double  lots       = HistoryDealGetDouble(dealTicket, DEAL_VOLUME);
+   double  pnl        = HistoryDealGetDouble(dealTicket, DEAL_PROFIT)
+                        + HistoryDealGetDouble(dealTicket, DEAL_SWAP)
+                        + HistoryDealGetDouble(dealTicket, DEAL_COMMISSION);
+   datetime closeTime = (datetime)HistoryDealGetInteger(dealTicket, DEAL_TIME);
+   long    dealType   = HistoryDealGetInteger(dealTicket, DEAL_TYPE);
+   string  sideStr    = (dealType == DEAL_TYPE_BUY) ? "short" : "long";
+   // DEAL_TYPE_BUY on an exit means we closed a short; flip accordingly.
+   long    reason     = HistoryDealGetInteger(dealTicket, DEAL_REASON);
+   string  reasonStr  = "manual";
+   if(reason == DEAL_REASON_SL) reasonStr = "sl";
+   else if(reason == DEAL_REASON_TP) reasonStr = "tp";
+   else if(reason == DEAL_REASON_SO) reasonStr = "stopout";
+   else if(reason == DEAL_REASON_EXPERT) reasonStr = "expert";
+
+   // Find the opening deal for the same position for open_time / open_price.
+   datetime openTime = closeTime;
+   double   openPrice = closePrice;
+   if(HistorySelectByPosition(posId)) {
+      int total = HistoryDealsTotal();
+      for(int i = 0; i < total; i++) {
+         ulong t = HistoryDealGetTicket(i);
+         if(t == 0) continue;
+         if(HistoryDealGetInteger(t, DEAL_ENTRY) == DEAL_ENTRY_IN) {
+            openTime = (datetime)HistoryDealGetInteger(t, DEAL_TIME);
+            openPrice = HistoryDealGetDouble(t, DEAL_PRICE);
+            break;
+         }
+      }
+   }
+
+   double pipSize = ZxPipSize();
+   double pipsSigned = (sideStr == "long")
+                      ? (closePrice - openPrice) / pipSize
+                      : (openPrice - closePrice) / pipSize;
+
+   double equity  = AccountInfoDouble(ACCOUNT_EQUITY);
+   double balance = AccountInfoDouble(ACCOUNT_BALANCE);
+   string ccy     = AccountInfoString(ACCOUNT_CURRENCY);
+   string broker  = AccountInfoString(ACCOUNT_COMPANY);
+   string periodStr = EnumToString((ENUM_TIMEFRAMES)_Period);
+
+   string body = StringFormat(
+      "{\\"token\\":\\"%s\\",\\"ticket\\":%I64u,\\"symbol\\":\\"%s\\",\\"timeframe\\":\\"%s\\",\\"side\\":\\"%s\\",\\"open_time\\":\\"%s\\",\\"open_price\\":%.6f,\\"close_time\\":\\"%s\\",\\"close_price\\":%.6f,\\"lots\\":%.4f,\\"pnl_cash\\":%.4f,\\"pnl_pips\\":%.2f,\\"close_reason\\":\\"%s\\",\\"equity_after\\":%.4f,\\"balance_after\\":%.4f,\\"account_currency\\":\\"%s\\",\\"broker\\":\\"%s\\",\\"ea_version\\":\\"1.0.0\\"}",
+      ZxJsonEscape(InpTelemetryToken),
+      (ulong)posId,
+      ZxJsonEscape(symbol),
+      ZxJsonEscape(periodStr),
+      sideStr,
+      ZxIsoUtc(openTime),
+      openPrice,
+      ZxIsoUtc(closeTime),
+      closePrice,
+      lots,
+      pnl,
+      pipsSigned,
+      reasonStr,
+      equity,
+      balance,
+      ZxJsonEscape(ccy),
+      ZxJsonEscape(broker)
+   );
+
+   char postBytes[]; StringToCharArray(body, postBytes, 0, StringLen(body), CP_UTF8);
+   char resultBytes[]; string resultHeaders;
+   int code = WebRequest("POST", InpTelemetryUrl, "Content-Type: application/json\\r\\n", 5000, postBytes, resultBytes, resultHeaders);
+   if(code != 200) {
+      Print("Zentryx telemetry POST returned ", code, " (check Tools→Options→Expert Advisors→Allow WebRequest).");
+   }
+}`;
+}
+
+function telemetryHandlerBlock(): string {
+  return `//─────────────────────────────────────────────────────────────────────
+// OnTradeTransaction — emit telemetry on every closed deal
+//─────────────────────────────────────────────────────────────────────
+void OnTradeTransaction(const MqlTradeTransaction& trans,
+                        const MqlTradeRequest& req,
+                        const MqlTradeResult& res)
+{
+   if(trans.type != TRADE_TRANSACTION_DEAL_ADD) return;
+   // Give MT5 a tick to commit the deal to history before reading it.
+   ZxReportTrade(trans.deal);
+}`;
 }

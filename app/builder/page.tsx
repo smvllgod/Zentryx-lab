@@ -75,6 +75,7 @@ import { Inspector } from "@/components/builder/Inspector";
 import { DiagnosticsPanel } from "@/components/builder/DiagnosticsPanel";
 import { CodePreview } from "@/components/builder/CodePreview";
 import { AiPanel } from "@/components/builder/AiPanel";
+import { BuilderMobileGate, useIsMobileViewport } from "@/components/builder/MobileGate";
 import { AppearancePanel } from "@/components/appearance/AppearancePanel";
 import type { VisualSchema } from "@/lib/appearance/types";
 import { cn } from "@/lib/utils/cn";
@@ -96,6 +97,14 @@ function suggestEdgeTo(graph: StrategyGraph, newNode: StrategyNode): StrategyEdg
 }
 
 export default function BuilderPage() {
+  // Block phones early — the canvas UX is unusable < 768px wide.
+  const isMobile = useIsMobileViewport();
+  if (isMobile) return <BuilderMobileGate />;
+
+  return <BuilderInner />;
+}
+
+function BuilderInner() {
   const { profile, user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -103,6 +112,7 @@ export default function BuilderPage() {
 
   const { graph, set: setGraph, reset, undo, redo } = useGraphHistory(emptyGraph());
   const [strategyId, setStrategyId] = useState<string | null>(id);
+  const [telemetryToken, setTelemetryToken] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(Boolean(id));
@@ -162,6 +172,7 @@ export default function BuilderPage() {
         };
         reset(safe);
         setStrategyId(row.id);
+        setTelemetryToken((row as unknown as { telemetry_token?: string | null }).telemetry_token ?? null);
       } catch (err) {
         toast.error((err as Error).message);
       } finally {
@@ -175,7 +186,22 @@ export default function BuilderPage() {
 
   const validation = useMemo(() => validateStrategy(graph), [graph]);
   const summary = useMemo(() => summarizeStrategy(graph), [graph]);
-  const compiled = useMemo(() => compileStrategy(graph, { protections }), [graph, protections]);
+  // Telemetry endpoint: Netlify function URL on deployed site, or localhost for dev.
+  const telemetryEndpoint = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    const base = window.location.origin;
+    return `${base}/.netlify/functions/strategy-telemetry`;
+  }, []);
+
+  const compiled = useMemo(
+    () => compileStrategy(graph, {
+      protections,
+      telemetry: telemetryToken && telemetryEndpoint
+        ? { token: telemetryToken, endpoint: telemetryEndpoint }
+        : undefined,
+    }),
+    [graph, protections, telemetryToken, telemetryEndpoint],
+  );
 
   // Source delivered to the user at export time. Pipeline:
   //   Free tier → always obfuscate + auto-watermark (legacy path).

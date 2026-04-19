@@ -47,3 +47,13 @@
   from = "/community/posts/*"
   to = "/community/posts/_/index.html"
   status = 200
+
+# Live telemetry page for any strategy id — matches /strategies/<id>/live[/].
+[[redirects]]
+  from = "/strategies/*/live"
+  to = "/strategies/_/live/index.html"
+  status = 200
+[[redirects]]
+  from = "/strategies/*/live/"
+  to = "/strategies/_/live/index.html"
+  status = 200

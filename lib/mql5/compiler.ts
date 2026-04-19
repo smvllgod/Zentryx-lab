@@ -125,6 +125,7 @@ export function compileStrategy(
     eaName: options.eaName ?? sanitizeFilename(graph.metadata.name),
     graph,
     contributions: collected,
+    telemetry: options.telemetry,
   });
 
   return {

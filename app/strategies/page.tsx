@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Workflow, Pencil, Sparkles } from "lucide-react";
+import { Plus, Trash2, Workflow, Pencil, Sparkles, Radio } from "lucide-react";
 import { AppShell } from "@/components/app/shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -170,6 +170,9 @@ export default function StrategiesPage() {
                 <div className="mt-4 flex items-center gap-2">
                   <Button asChild size="sm" variant="secondary" className="flex-1">
                     <a href={`/builder?id=${row.id}`}><Pencil size={12} /> Open builder</a>
+                  </Button>
+                  <Button asChild size="icon" variant="ghost" aria-label="Live telemetry" title="Live telemetry">
+                    <a href={`/strategies/${row.id}/live/`}><Radio size={14} /></a>
                   </Button>
                   <Button size="icon" variant="ghost" onClick={() => handleDelete(row.id, row.name)} aria-label="Delete">
                     <Trash2 size={14} />

@@ -87,6 +87,18 @@ export interface CompileOptions {
    * translators. See lib/mql5/protections.ts for the shape.
    */
   protections?: import("./protections").ProtectionConfig;
+  /**
+   * Live telemetry configuration — optional. When provided, the compiler
+   * emits an `OnTradeTransaction` hook that POSTs every closed deal to
+   * the /.netlify/functions/strategy-telemetry endpoint. The token is
+   * unique per strategy and is rotatable from the app.
+   */
+  telemetry?: {
+    /** UUID copied from strategies.telemetry_token. */
+    token: string;
+    /** Absolute HTTPS URL of the telemetry endpoint. */
+    endpoint: string;
+  };
 }
 
 export interface CompileResult {
