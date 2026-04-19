@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Workflow, Download, Store, Plus } from "lucide-react";
+import { Workflow, Download, Store, Plus, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/app/shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { listStrategies, type StrategyRow } from "@/lib/strategies/store";
 import { useAuth } from "@/lib/auth/context";
 import { formatRelative } from "@/lib/utils/format";
 import { PLANS } from "@/lib/billing/plans";
+import { TemplatePicker } from "@/components/templates/TemplatePicker";
 
 export default function OverviewPage() {
   const { user, profile } = useAuth();
@@ -50,6 +51,35 @@ export default function OverviewPage() {
         <StatCard label="Current plan" value={planMeta.name} icon={<Store size={16} />} hint={planMeta.tagline} />
       </div>
 
+      {/* Templates surface — prominent for new users (no strategies yet),
+          compact preview for returning users. */}
+      {!loading && strategies.length === 0 ? (
+        <Card className="mb-6 border-emerald-200 bg-gradient-to-br from-emerald-50/60 via-white to-white">
+          <CardContent>
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-4">
+              <div>
+                <div className="flex items-center gap-2 text-xs font-700 text-emerald-600 uppercase tracking-widest">
+                  <Sparkles size={12} />
+                  Start from a template
+                </div>
+                <h2 className="mt-1 text-lg font-700 text-gray-900">
+                  Build your first EA in 30 seconds
+                </h2>
+                <p className="mt-1 text-sm text-gray-600 max-w-lg">
+                  Start from a real, complete robot — trend followers, breakouts,
+                  prop-firm safe, mean reversion, even guarded grid and martingale.
+                  Fully wired and ready to export.
+                </p>
+              </div>
+              <Button asChild size="sm" variant="secondary">
+                <a href="/templates">Browse all →</a>
+              </Button>
+            </div>
+            <TemplatePicker compact showFilters={false} limit={4} featuredFirst />
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card>
         <CardContent>
           <div className="flex items-center justify-between mb-3">
@@ -61,10 +91,10 @@ export default function OverviewPage() {
           ) : strategies.length === 0 ? (
             <EmptyState
               title="No strategies yet"
-              description="Create your first strategy and export your first .mq5 in minutes."
+              description="Pick a template above, or start from a blank canvas."
               action={
                 <Button asChild>
-                  <a href="/builder"><Plus size={14} /> Create strategy</a>
+                  <a href="/builder"><Plus size={14} /> Blank strategy</a>
                 </Button>
               }
             />

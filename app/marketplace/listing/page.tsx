@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft, Download, Star, ShoppingBag, Calendar, Tag, User, Zap,
-  ChevronLeft, ChevronRight, Image as ImageIcon, Check, FileCode2,
+  ChevronLeft, ChevronRight, Image as ImageIcon, Check, FileCode2, GitFork,
 } from "lucide-react";
 import { PublicShell } from "@/components/app/public-shell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -45,6 +45,7 @@ function ListingDetailInner() {
   const [setfileCount, setSetfileCount] = useState(0);
   const [setfileRows, setSetfileRows] = useState<SetfileRow[]>([]);
   const [downloading, setDownloading] = useState(false);
+  const [forking, setForking] = useState(false);
 
   async function loadAll() {
     if (!id) return;
@@ -124,6 +125,32 @@ function ListingDetailInner() {
       toast.error("Download failed: " + (err as Error).message);
     } finally {
       setDownloading(false);
+    }
+  }
+
+  async function handleFork() {
+    if (!listing) return;
+    if (!user) { toast.error("Sign in to fork this strategy."); return; }
+    if (listing.price_cents > 0) {
+      toast.error("Only free listings can be forked.");
+      return;
+    }
+    setForking(true);
+    try {
+      const { getSupabase } = await import("@/lib/supabase/client");
+      const db = getSupabase();
+      const { data, error } = await db.rpc("fork_free_listing", {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        _listing_id: listing.id,
+        _new_name: `${listing.title} (fork)`,
+      } as any);
+      if (error) throw error;
+      const newId = data as unknown as string;
+      toast.success("Forked to your strategies.");
+      window.location.href = `/builder?id=${newId}`;
+    } catch (err) {
+      toast.error("Fork failed: " + (err as Error).message);
+      setForking(false);
     }
   }
 
@@ -310,9 +337,23 @@ function ListingDetailInner() {
                   </Button>
                 ) : user ? (
                   free ? (
-                    <Button size="lg" className="w-full" onClick={downloadBundle} disabled={downloading}>
-                      <Download size={15} /> {downloading ? "Bundling…" : (setfileCount > 0 ? `Download (EA + ${setfileCount} setfile${setfileCount === 1 ? "" : "s"})` : "Download EA")}
-                    </Button>
+                    <>
+                      <Button size="lg" className="w-full" onClick={downloadBundle} disabled={downloading}>
+                        <Download size={15} /> {downloading ? "Bundling…" : (setfileCount > 0 ? `Download (EA + ${setfileCount} setfile${setfileCount === 1 ? "" : "s"})` : "Download EA")}
+                      </Button>
+                      {/* Fork is available only on free listings — we don't
+                          undermine paid creators by making their work one-click copyable. */}
+                      <Button
+                        size="lg"
+                        variant="secondary"
+                        className="w-full"
+                        onClick={handleFork}
+                        disabled={forking}
+                        title="Copy the strategy graph into your account and keep editing"
+                      >
+                        <GitFork size={15} /> {forking ? "Forking…" : "Fork to my strategies"}
+                      </Button>
+                    </>
                   ) : (
                     <Button size="lg" className="w-full" onClick={() => toast.info("Purchase flow — Stripe checkout coming soon.")}>
                       <ShoppingBag size={15} /> Buy now

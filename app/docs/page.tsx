@@ -38,6 +38,7 @@ type Section =
   | "intro"
   | "getting-started"
   | "auth-onboarding"
+  | "templates"
   | "builder"
   | "ai-helper"
   | "nodes"
@@ -53,6 +54,7 @@ const SECTIONS: { id: Section; label: string; icon: React.ReactNode; group?: str
   { id: "intro", label: "Introduction", icon: <Book size={14} />, group: "Start here" },
   { id: "getting-started", label: "Getting started", icon: <Sparkles size={14} />, group: "Start here" },
   { id: "auth-onboarding", label: "Sign-in & onboarding", icon: <LogIn size={14} />, group: "Start here" },
+  { id: "templates", label: "Templates", icon: <Sparkles size={14} />, group: "Start here" },
 
   { id: "builder", label: "Strategy builder", icon: <Workflow size={14} />, group: "Build" },
   { id: "ai-helper", label: "Zentryx AI", icon: <Zap size={14} />, group: "Build" },
@@ -218,6 +220,7 @@ export default function DocsPage() {
           {active === "intro" && <Intro setActive={setActive} />}
           {active === "getting-started" && <GettingStarted />}
           {active === "auth-onboarding" && <AuthOnboardingDocs />}
+          {active === "templates" && <TemplatesDocs />}
           {active === "builder" && <BuilderDocs />}
           {active === "ai-helper" && <AiHelperDocs />}
           {active === "appearance" && <AppearanceDocs />}
@@ -1139,6 +1142,89 @@ function AuthOnboardingDocs() {
         </ol>
         <p className="mt-3 text-xs text-gray-500">
           All fields update later in Settings → Profile. The wizard sets <code>profiles.onboarded = true</code> when completed or skipped.
+        </p>
+      </CardContent></Card>
+    </article>
+  );
+}
+
+function TemplatesDocs() {
+  return (
+    <article className="prose-docs space-y-6">
+      <SectionHeader
+        title="Strategy templates"
+        subtitle="Complete, battle-tested robots you can use as a starting point — or export as-is."
+      />
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">What templates are</h3>
+        <p className="text-sm text-gray-600 mt-2">
+          Every template is a <strong>full strategy</strong>: entry, filters, risk, lot sizing, exits,
+          and trade management already wired. Not snippets — robots you could export today. Each
+          one comes with a plain-English explanation of how it trades, when it works, when it
+          struggles, and which symbols / timeframes / min balance it's designed for.
+        </p>
+      </CardContent></Card>
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">Where to find them</h3>
+        <ul className="mt-3 space-y-2">
+          <Bullet><strong>/templates</strong> — the full catalog with search + category filters.</Bullet>
+          <Bullet><strong>Sidebar → Templates</strong> — one click from anywhere in the app.</Bullet>
+          <Bullet><strong>/overview</strong> — featured templates on the dashboard; prominent when you have no strategies yet.</Bullet>
+          <Bullet><strong>/strategies</strong> — a "Start from template" section above your strategy list.</Bullet>
+          <Bullet><strong>/builder</strong> — Templates button in the topbar; empty-canvas also links to templates.</Bullet>
+        </ul>
+      </CardContent></Card>
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">What's in the catalog</h3>
+        <p className="text-sm text-gray-600 mt-2">
+          Templates span every major strategy style, from beginner-friendly to advanced high-risk systems.
+        </p>
+        <ul className="mt-3 space-y-2">
+          <Bullet><strong>Trend followers</strong> — EMA Cross Pro, Donchian Turtle, Gold Trend Hunter (XAUUSD H4).</Bullet>
+          <Bullet><strong>Mean reversion</strong> — RSI Mean Reversion with ADX range filter and SL cooldown.</Bullet>
+          <Bullet><strong>Breakouts</strong> — Bollinger Squeeze Breakout, N-bar breakout London scalper.</Bullet>
+          <Bullet><strong>Multi-timeframe</strong> — H4 EMA bias + M15 MACD trigger.</Bullet>
+          <Bullet><strong>One-shot sniper</strong> — triple confirmation, one trade at a time.</Bullet>
+          <Bullet><strong>Prop-firm safe</strong> — 0.5% risk, daily DD latch, news pause, weekend carry guard, emergency kill-switch.</Bullet>
+          <Bullet><strong>Grid</strong> — ATR-spaced grid with basket TP + emergency stop.</Bullet>
+          <Bullet><strong>Martingale (guarded)</strong> — capped recovery with daily DD latch and -7% account kill.</Bullet>
+        </ul>
+      </CardContent></Card>
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">How templates are instantiated</h3>
+        <p className="text-sm text-gray-600 mt-2">
+          Clicking "Use this template" creates a fresh <code>strategies</code> row owned by your
+          account, with a copy of the template's graph. Fresh node ids are generated on every
+          instantiation — you can fork the same template any number of times without collision.
+          The strategy is tagged with <code>template:&lt;slug&gt;</code> so we can surface a "Based on X" badge later.
+        </p>
+        <p className="text-sm text-gray-600 mt-2">
+          Templates are stored as code (<code>lib/templates/catalog.ts</code>), not database rows.
+          Editing a template source + redeploying updates future instantiations but never alters
+          user strategies that were already created from it.
+        </p>
+      </CardContent></Card>
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">Forking marketplace listings</h3>
+        <p className="text-sm text-gray-600 mt-2">
+          On a <strong>free</strong> marketplace listing you'll see a <em>"Fork to my strategies"</em> button
+          next to the Download button. Forking copies the strategy graph into your own account so
+          you can tweak it freely — rename blocks, change parameters, swap timeframes.
+        </p>
+        <p className="text-sm text-gray-600 mt-2">
+          <strong>Paid listings are not forkable.</strong> The creator put work into the strategy and
+          sells it as-is — letting buyers one-click copy-and-paste it would destroy that value.
+          If you buy a paid listing you get the compiled <code>.mq5</code> + any setfiles, and can run
+          it in MT5, but not duplicate the canvas graph.
+        </p>
+        <p className="text-xs text-gray-500 mt-2">
+          Behind the scenes: fork goes through the <code>fork_free_listing(listing_id, new_name)</code> Postgres RPC
+          (SECURITY DEFINER), which re-verifies <code>status='published' AND price_cents=0</code> before copying the graph.
         </p>
       </CardContent></Card>
     </article>

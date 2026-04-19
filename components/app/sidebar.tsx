@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   FolderKanban,
   Workflow,
+  Sparkles,
   Store,
   Download,
   CreditCard,
@@ -22,6 +23,7 @@ import { cn } from "@/lib/utils/cn";
 const NAV = [
   { href: "/overview",      label: "Overview",      icon: LayoutDashboard },
   { href: "/strategies",    label: "My Strategies", icon: FolderKanban },
+  { href: "/templates",     label: "Templates",     icon: Sparkles },
   { href: "/builder",       label: "Builder",       icon: Workflow },
   { href: "/marketplace",   label: "Marketplace",   icon: Store },
   { href: "/community",     label: "Community",     icon: Users },

@@ -400,6 +400,9 @@ export default function BuilderPage() {
   // Topbar actions (hidden in fullscreen, duplicated in the in-canvas toolbar).
   const topbarActions = (
     <div className="hidden md:flex items-center gap-2">
+      <Button asChild variant="ghost" size="sm" title="Start a new strategy from a template">
+        <a href="/templates"><Sparkles size={14} /> Templates</a>
+      </Button>
       <Button variant="ghost" size="sm" onClick={undo}>
         <Undo2 size={14} /> Undo
       </Button>
@@ -554,11 +557,17 @@ export default function BuilderPage() {
 
             <div className="flex-1 relative min-h-[420px] bg-gray-50/40">
               {graph.nodes.length === 0 ? (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                  <EmptyState
-                    title="Drop your first node"
-                    description="Drag from the left, or double-click any node to add it. Start with an Entry, then add Filters, Risk, and Exits."
-                  />
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10 p-4">
+                  <div className="pointer-events-none">
+                    <EmptyState
+                      title="Drop your first node"
+                      description="Drag from the left, or double-click any node to add it. Start with an Entry, then add Filters, Risk, and Exits."
+                    />
+                  </div>
+                  <div className="text-xs text-gray-400">or</div>
+                  <Button asChild size="sm" variant="secondary">
+                    <a href="/templates"><Sparkles size={14} /> Start from a template</a>
+                  </Button>
                 </div>
               ) : null}
               <BuilderCanvas

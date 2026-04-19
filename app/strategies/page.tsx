@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Workflow, Pencil } from "lucide-react";
+import { Plus, Trash2, Workflow, Pencil, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/app/shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EmptyState } from "@/components/ui/empty-state";
+import { TemplatePicker } from "@/components/templates/TemplatePicker";
 import {
   Dialog,
   DialogContent,
@@ -99,6 +100,29 @@ export default function StrategiesPage() {
         </Button>
       }
     >
+      {/* Start from a template — always visible; critical for activation. */}
+      <Card className="mb-6 border-emerald-200 bg-gradient-to-br from-emerald-50/60 via-white to-white">
+        <CardContent>
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-4">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-700 text-emerald-600 uppercase tracking-widest">
+                <Sparkles size={12} />
+                Start from a template
+              </div>
+              <h2 className="mt-1 text-lg font-700 text-gray-900">Skip the blank canvas</h2>
+              <p className="mt-1 text-sm text-gray-600 max-w-lg">
+                Every template is a full strategy with entries, filters, risk, and exits
+                already wired. Click any card to see exactly how it trades before you use it.
+              </p>
+            </div>
+            <Button asChild size="sm" variant="secondary">
+              <a href="/templates">Browse all →</a>
+            </Button>
+          </div>
+          <TemplatePicker compact showFilters={false} limit={4} featuredFirst />
+        </CardContent>
+      </Card>
+
       {loading ? (
         <div className="text-sm text-gray-400">Loading…</div>
       ) : rows.length === 0 ? (
