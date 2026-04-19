@@ -8,6 +8,7 @@ import { AdminSidebar } from "./AdminSidebar";
 import { CommandPalette, useCommandPaletteShortcut } from "./CommandPalette";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { Menu, ChevronRight } from "lucide-react";
+import { NotificationsBell } from "@/components/app/NotificationsBell";
 
 interface Props {
   title: string;
@@ -136,6 +137,8 @@ function AdminShellInner({ title, subtitle, actions, breadcrumbs, children }: Pr
             </button>
 
             <div className="flex items-center gap-2">{actions}</div>
+
+            <NotificationsBell />
 
             <div className="flex items-center gap-2 pl-2 border-l border-gray-100 ml-1">
               <div className="text-right hidden sm:block leading-tight">

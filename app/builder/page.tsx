@@ -526,6 +526,14 @@ export default function BuilderPage() {
               <Button variant="secondary" size="sm" onClick={() => setAppearanceOpen(true)}>
                 <Paintbrush size={13} /> Appearance
               </Button>
+              <Button variant="secondary" size="sm" onClick={() => setProtectionOpen(true)}>
+                <ShieldCheck size={13} /> Protection
+                {countEnabledProtections(protections) > 0 && (
+                  <span className="inline-flex items-center rounded-full bg-emerald-500 text-white text-[9px] font-700 w-4 h-4 justify-center ml-0.5">
+                    {countEnabledProtections(protections)}
+                  </span>
+                )}
+              </Button>
               <Button variant="secondary" size="sm" onClick={() => setPreviewOpen(true)}>
                 <Code2 size={13} /> Preview code
               </Button>

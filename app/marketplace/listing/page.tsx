@@ -109,6 +109,17 @@ function ListingDetailInner() {
       } else {
         toast.success("Downloaded.");
       }
+
+      // Register the download so the counter bumps for real (and the
+      // creator gets a notification). Idempotent per (listing, buyer).
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await db.rpc("register_listing_download", { p_listing_id: listing.id } as any);
+      } catch {
+        // Non-fatal — the counter will stay stale but the file is downloaded.
+      }
+      // Refresh listing row so the UI reflects the new count.
+      void loadAll();
     } catch (err) {
       toast.error("Download failed: " + (err as Error).message);
     } finally {

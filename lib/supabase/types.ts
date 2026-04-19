@@ -492,6 +492,33 @@ export interface Database {
         > & { id?: string; created_at?: string; updated_at?: string };
         Update: Partial<Database["public"]["Tables"]["forum_comments"]["Insert"]>;
       };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          kind:
+            | "purchase"
+            | "review"
+            | "comment"
+            | "post_approved"
+            | "post_rejected"
+            | "license_issued"
+            | "license_revoked"
+            | "system";
+          title: string;
+          body: string | null;
+          link: string | null;
+          subject_type: string | null;
+          subject_id: string | null;
+          read_at: string | null;
+          created_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["notifications"]["Row"], "id" | "created_at"> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["notifications"]["Insert"]>;
+      };
     };
   };
 }

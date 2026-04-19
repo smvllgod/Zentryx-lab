@@ -45,7 +45,6 @@ type Section =
   | "mql5-export"
   | "license"
   | "marketplace"
-  | "admin"
   | "strategy-tester"
   | "plans"
   | "faq";
@@ -65,7 +64,6 @@ const SECTIONS: { id: Section; label: string; icon: React.ReactNode; group?: str
   { id: "strategy-tester", label: "Strategy Tester", icon: <Download size={14} />, group: "Ship" },
 
   { id: "marketplace", label: "Marketplace", icon: <Hexagon size={14} />, group: "Distribute" },
-  { id: "admin", label: "Admin (staff)", icon: <Cog size={14} />, group: "Distribute" },
 
   { id: "plans", label: "Plans & limits", icon: <CheckCircle2 size={14} />, group: "Reference" },
   { id: "faq", label: "FAQ", icon: <Book size={14} />, group: "Reference" },
@@ -225,7 +223,6 @@ export default function DocsPage() {
           {active === "appearance" && <AppearanceDocs />}
           {active === "license" && <LicenseDocs />}
           {active === "marketplace" && <MarketplaceDocs />}
-          {active === "admin" && <AdminDocs />}
           {active === "nodes" && (
             <NodeReference nodes={filteredNodes} query={query} onQueryChange={setQuery} totalCount={NODE_DEFINITIONS.length} />
           )}
@@ -1262,52 +1259,6 @@ function MarketplaceDocs() {
           <Bullet>One review per user per listing — editable and deletable by the author.</Bullet>
           <Bullet>Star rating (1–5) + optional body up to 1500 characters.</Bullet>
           <Bullet>Listing aggregated rating updates automatically via database trigger.</Bullet>
-        </ul>
-      </CardContent></Card>
-    </article>
-  );
-}
-
-function AdminDocs() {
-  return (
-    <article className="prose-docs space-y-6">
-      <SectionHeader
-        title="Admin dashboard"
-        subtitle="Internal control center. Role-gated to admin / staff."
-      />
-
-      <Card><CardContent>
-        <h3 className="text-base font-700 text-gray-900">Access</h3>
-        <p className="text-sm text-gray-600 mt-2">
-          Admins reach the panel at <a href="/admin" className="text-emerald-600 font-600">/admin</a>. A route guard redirects
-          anyone whose <code>profiles.role</code> isn&apos;t <code>admin</code> or <code>staff</code>. Cmd-K opens a global search.
-        </p>
-      </CardContent></Card>
-
-      <Card><CardContent>
-        <h3 className="text-base font-700 text-gray-900">Sections</h3>
-        <ul className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-700">
-          <li><strong>Overview</strong> — stats, sparklines, block heatmap, top creators & blocks, recent errors.</li>
-          <li><strong>Users</strong> — list / search / suspend / change plan or role / bulk actions / CSV.</li>
-          <li><strong>Subscriptions</strong> — status distribution, manual overrides.</li>
-          <li><strong>Strategies</strong> — full graph inspection, generated MQL5 preview, version history.</li>
-          <li><strong>Logic Blocks</strong> — usage analytics, per-block status / plan / visibility override.</li>
-          <li><strong>Exports</strong> — every .mq5 download logged with filters.</li>
-          <li><strong>Marketplace</strong> — listings moderation, flag resolution.</li>
-          <li><strong>Creators</strong> — top creators, listing conversion, revenue.</li>
-          <li><strong>Licenses</strong> — global license analytics across creator-issued keys.</li>
-          <li><strong>Flags / Control</strong> — global feature flags + per-block overrides.</li>
-          <li><strong>Audit log</strong> — every admin mutation with actor, target, before / after.</li>
-          <li><strong>System</strong> — maintenance mode, announcement banner, pricing, licensing defaults.</li>
-        </ul>
-      </CardContent></Card>
-
-      <Card><CardContent>
-        <h3 className="text-base font-700 text-gray-900">Safety</h3>
-        <ul className="mt-2 space-y-2">
-          <Bullet>Every destructive action gates through a confirm dialog.</Bullet>
-          <Bullet>Every mutation is written to <code>admin_actions</code> with the actor, target, and before/after snapshot.</Bullet>
-          <Bullet>RLS enforces admin-only access server-side — not just in the UI.</Bullet>
         </ul>
       </CardContent></Card>
     </article>

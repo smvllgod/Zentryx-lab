@@ -4,6 +4,7 @@ import { Menu, LogOut, User as UserIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth/context";
 import { Button } from "@/components/ui/button";
+import { NotificationsBell } from "./NotificationsBell";
 
 export function Topbar({
   title,
@@ -36,8 +37,9 @@ export function Topbar({
         <div className="flex-1 min-w-0">
           <h1 className="text-base font-700 text-gray-900 truncate">{title}</h1>
         </div>
-        <div className="hidden sm:flex items-center gap-3">
+        <div className="hidden sm:flex items-center gap-2">
           {actions}
+          <NotificationsBell />
           <Badge tone={plan === "FREE" ? "default" : plan === "PRO" ? "emerald" : "purple"}>
             {plan}
           </Badge>
@@ -53,7 +55,8 @@ export function Topbar({
             </button>
           </div>
         </div>
-        <div className="sm:hidden">
+        <div className="sm:hidden flex items-center gap-1">
+          <NotificationsBell />
           <UserIcon size={18} className="text-gray-500" />
         </div>
       </div>
