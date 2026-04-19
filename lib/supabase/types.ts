@@ -132,6 +132,25 @@ export interface Database {
         };
         Update: Partial<Database["public"]["Tables"]["listing_flags"]["Insert"]>;
       };
+      admin_actions: {
+        Row: {
+          id: string;
+          actor_id: string | null;
+          actor_email: string | null;
+          action: string;
+          target_type: string;
+          target_id: string | null;
+          before: Json | null;
+          after: Json | null;
+          note: string | null;
+          created_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["admin_actions"]["Row"], "id" | "created_at"> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["admin_actions"]["Insert"]>;
+      };
       subscriptions: {
         Row: {
           id: string;

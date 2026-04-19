@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
 import { useIsAdmin } from "@/lib/admin/auth";
@@ -14,7 +14,19 @@ interface Props {
   children: React.ReactNode;
 }
 
-export function AdminShell({ title, subtitle, actions, children }: Props) {
+// Static export requires every component reading useSearchParams to be
+// rendered inside a <Suspense> boundary — otherwise the page refuses to
+// pre-render. We split the implementation into AdminShellInner (consumes
+// useSearchParams) and wrap it here.
+export function AdminShell(props: Props) {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-sm text-gray-400">Loading…</div>}>
+      <AdminShellInner {...props} />
+    </Suspense>
+  );
+}
+
+function AdminShellInner({ title, subtitle, actions, children }: Props) {
   const { ready: sessionReady, user, profile } = useAuth();
   const { ready: roleReady, role } = useIsAdmin();
   const router = useRouter();

@@ -11,6 +11,79 @@ function db() {
   return getSupabase();
 }
 
+// ────────────────────────────────────────────────────────────────────
+// Audit log
+// ────────────────────────────────────────────────────────────────────
+// Every mutation writes an entry. Reads are shown on /admin/audit.
+
+export type AdminAction =
+  | "user.suspend"
+  | "user.reactivate"
+  | "user.plan_change"
+  | "user.role_change"
+  | "subscription.override"
+  | "listing.status_change"
+  | "flag.resolve"
+  | "block.override_set"
+  | "block.override_clear"
+  | "feature_flag.toggle"
+  | "setting.update"
+  | "user.impersonate";
+
+interface LogArgs {
+  action: AdminAction;
+  targetType: string;
+  targetId?: string | null;
+  before?: unknown;
+  after?: unknown;
+  note?: string;
+}
+
+export async function logAdminAction(args: LogArgs): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  try {
+    const s = db();
+    const { data: { user } } = await s.auth.getUser();
+    if (!user) return;
+    await s.from("admin_actions").insert({
+      actor_id: user.id,
+      actor_email: user.email ?? null,
+      action: args.action,
+      target_type: args.targetType,
+      target_id: args.targetId ?? null,
+      before: (args.before ?? null) as Json,
+      after: (args.after ?? null) as Json,
+      note: args.note ?? null,
+    });
+  } catch {
+    // Audit must never break the primary mutation
+  }
+}
+
+export async function listAuditLog(opts: {
+  actorId?: string;
+  targetType?: string;
+  targetId?: string;
+  action?: AdminAction | string;
+  since?: string;                    // ISO
+  limit?: number;
+} = {}) {
+  if (!isSupabaseConfigured()) return [] as Tables<"admin_actions">[];
+  let q = db()
+    .from("admin_actions")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(opts.limit ?? 200);
+  if (opts.actorId)    q = q.eq("actor_id", opts.actorId);
+  if (opts.targetType) q = q.eq("target_type", opts.targetType);
+  if (opts.targetId)   q = q.eq("target_id", opts.targetId);
+  if (opts.action)     q = q.eq("action", opts.action);
+  if (opts.since)      q = q.gte("created_at", opts.since);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []) as Tables<"admin_actions">[];
+}
+
 // ── Overview ──────────────────────────────────────────────────────
 
 export interface OverviewStats {
@@ -140,18 +213,50 @@ export async function getUserDetail(id: string) {
 }
 
 export async function setUserSuspended(id: string, suspended: boolean) {
-  const { error } = await db().from("profiles").update({ suspended }).eq("id", id);
+  const s = db();
+  const { data: before } = await s.from("profiles").select("suspended").eq("id", id).single();
+  const { error } = await s.from("profiles").update({ suspended }).eq("id", id);
   if (error) throw error;
+  void logAdminAction({
+    action: suspended ? "user.suspend" : "user.reactivate",
+    targetType: "user", targetId: id,
+    before: { suspended: (before as { suspended?: boolean } | null)?.suspended ?? false },
+    after: { suspended },
+  });
 }
 
 export async function setUserPlan(id: string, plan: "free" | "pro" | "creator") {
-  const { error } = await db().from("profiles").update({ plan }).eq("id", id);
+  const s = db();
+  const { data: before } = await s.from("profiles").select("plan").eq("id", id).single();
+  const { error } = await s.from("profiles").update({ plan }).eq("id", id);
   if (error) throw error;
+  void logAdminAction({
+    action: "user.plan_change",
+    targetType: "user", targetId: id,
+    before: { plan: (before as { plan?: string } | null)?.plan ?? null },
+    after: { plan },
+  });
 }
 
 export async function setUserRole(id: string, role: "user" | "staff" | "admin") {
-  const { error } = await db().from("profiles").update({ role }).eq("id", id);
+  const s = db();
+  const { data: before } = await s.from("profiles").select("role").eq("id", id).single();
+  const { error } = await s.from("profiles").update({ role }).eq("id", id);
   if (error) throw error;
+  void logAdminAction({
+    action: "user.role_change",
+    targetType: "user", targetId: id,
+    before: { role: (before as { role?: string } | null)?.role ?? null },
+    after: { role },
+  });
+}
+
+// Bulk helpers — used by checkbox rows on the Users table.
+export async function bulkSetUserSuspended(ids: string[], suspended: boolean) {
+  await Promise.all(ids.map((id) => setUserSuspended(id, suspended)));
+}
+export async function bulkSetUserPlan(ids: string[], plan: "free" | "pro" | "creator") {
+  await Promise.all(ids.map((id) => setUserPlan(id, plan)));
 }
 
 // ── Subscriptions ─────────────────────────────────────────────────
@@ -170,8 +275,16 @@ export async function listSubscriptions(opts: { status?: string; limit?: number 
 }
 
 export async function overrideSubscription(id: string, patch: { plan?: string; status?: string; current_period_end?: string }) {
-  const { error } = await db().from("subscriptions").update(patch).eq("id", id);
+  const s = db();
+  const { data: before } = await s.from("subscriptions").select("plan,status,current_period_end").eq("id", id).single();
+  const { error } = await s.from("subscriptions").update(patch).eq("id", id);
   if (error) throw error;
+  void logAdminAction({
+    action: "subscription.override",
+    targetType: "subscription", targetId: id,
+    before: before as unknown,
+    after: patch,
+  });
 }
 
 // ── Strategies ────────────────────────────────────────────────────
@@ -213,6 +326,7 @@ export async function listBlockOverrides() {
 export async function setBlockOverride(blockId: string, patch: { force_status?: string; force_plan?: string; force_hidden?: boolean; notes?: string }) {
   const s = db();
   const user = (await s.auth.getUser()).data.user;
+  const { data: before } = await s.from("block_registry_overrides").select("*").eq("block_id", blockId).maybeSingle();
   const { error } = await s
     .from("block_registry_overrides")
     .upsert(
@@ -220,11 +334,24 @@ export async function setBlockOverride(blockId: string, patch: { force_status?: 
       { onConflict: "block_id" },
     );
   if (error) throw error;
+  void logAdminAction({
+    action: "block.override_set",
+    targetType: "block", targetId: blockId,
+    before: before as unknown,
+    after: patch,
+  });
 }
 
 export async function clearBlockOverride(blockId: string) {
-  const { error } = await db().from("block_registry_overrides").delete().eq("block_id", blockId);
+  const s = db();
+  const { data: before } = await s.from("block_registry_overrides").select("*").eq("block_id", blockId).maybeSingle();
+  const { error } = await s.from("block_registry_overrides").delete().eq("block_id", blockId);
   if (error) throw error;
+  void logAdminAction({
+    action: "block.override_clear",
+    targetType: "block", targetId: blockId,
+    before: before as unknown,
+  });
 }
 
 // ── Feature flags ─────────────────────────────────────────────────
@@ -238,11 +365,18 @@ export async function listFeatureFlags() {
 export async function setFeatureFlag(slug: string, enabled: boolean) {
   const s = db();
   const user = (await s.auth.getUser()).data.user;
+  const { data: before } = await s.from("feature_flags").select("enabled").eq("slug", slug).maybeSingle();
   const { error } = await s.from("feature_flags").upsert(
     { slug, enabled, updated_by: user?.id ?? null },
     { onConflict: "slug" },
   );
   if (error) throw error;
+  void logAdminAction({
+    action: "feature_flag.toggle",
+    targetType: "flag", targetId: slug,
+    before: { enabled: (before as { enabled?: boolean } | null)?.enabled ?? false },
+    after: { enabled },
+  });
 }
 
 // ── Exports ───────────────────────────────────────────────────────
@@ -275,8 +409,16 @@ export async function listListingsAdmin(opts: { status?: string; query?: string;
 }
 
 export async function setListingStatus(id: string, status: "draft" | "published" | "archived") {
-  const { error } = await db().from("marketplace_listings").update({ status }).eq("id", id);
+  const s = db();
+  const { data: before } = await s.from("marketplace_listings").select("status").eq("id", id).single();
+  const { error } = await s.from("marketplace_listings").update({ status }).eq("id", id);
   if (error) throw error;
+  void logAdminAction({
+    action: "listing.status_change",
+    targetType: "listing", targetId: id,
+    before: { status: (before as { status?: string } | null)?.status ?? null },
+    after: { status },
+  });
 }
 
 export async function listListingFlags(opts: { resolved?: boolean } = {}) {
@@ -374,9 +516,66 @@ export async function listSettings() {
 export async function updateSetting(key: string, value: Json) {
   const s = db();
   const user = (await s.auth.getUser()).data.user;
+  const { data: before } = await s.from("system_settings").select("value").eq("key", key).maybeSingle();
   const { error } = await s.from("system_settings").upsert(
     { key, value, updated_by: user?.id ?? null },
     { onConflict: "key" },
   );
   if (error) throw error;
+  void logAdminAction({
+    action: "setting.update",
+    targetType: "setting", targetId: key,
+    before: (before as { value?: Json } | null)?.value ?? null,
+    after: value,
+  });
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Time-series helpers for sparklines / charts
+// ────────────────────────────────────────────────────────────────────
+
+/**
+ * Returns N daily buckets (most recent first) counting `created_at`
+ * rows on the given table. Used by the Overview sparklines.
+ */
+export async function dailyCount(
+  table: "profiles" | "strategies" | "exports" | "purchases",
+  days = 14,
+): Promise<{ date: string; count: number }[]> {
+  if (!isSupabaseConfigured()) return [];
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await db()
+    .from(table)
+    .select("created_at")
+    .gte("created_at", since);
+  if (error) throw error;
+  const buckets = new Map<string, number>();
+  for (const r of (data ?? []) as { created_at: string }[]) {
+    const k = r.created_at.slice(0, 10);
+    buckets.set(k, (buckets.get(k) ?? 0) + 1);
+  }
+  const out: { date: string; count: number }[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+    const k = d.toISOString().slice(0, 10);
+    out.push({ date: k, count: buckets.get(k) ?? 0 });
+  }
+  return out;
+}
+
+/**
+ * Strategy detail — full graph + user + versions + exports for /admin/strategies/[id].
+ */
+export async function getStrategyDetail(id: string) {
+  const s = db();
+  const [strategy, versions, exports] = await Promise.all([
+    s.from("strategies").select("*, profiles!strategies_user_id_fkey(email,full_name,plan)").eq("id", id).maybeSingle(),
+    s.from("strategy_versions").select("id,version,summary,created_at,created_by").eq("strategy_id", id).order("version", { ascending: false }).limit(20),
+    s.from("exports").select("id,filename,created_at,user_id").eq("strategy_id", id).order("created_at", { ascending: false }).limit(20),
+  ]);
+  return {
+    strategy: (strategy.data ?? null) as (Tables<"strategies"> & { profiles?: { email: string; full_name: string | null; plan: string } | null }) | null,
+    versions: (versions.data ?? []) as Pick<Tables<"strategy_versions">, "id" | "version" | "summary" | "created_at" | "created_by">[],
+    exports: (exports.data ?? []) as Pick<Tables<"exports">, "id" | "filename" | "created_at" | "user_id">[],
+  };
 }
