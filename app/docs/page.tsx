@@ -1234,6 +1234,84 @@ function TemplatesDocs() {
   );
 }
 
+function BacktestDocs() {
+  return (
+    <article className="prose-docs space-y-6">
+      <SectionHeader
+        title="In-browser backtest"
+        subtitle="Fast client-side simulation for quick feedback. For deep analysis, still use MT5 Strategy Tester."
+      />
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">What it is</h3>
+        <p className="text-sm text-gray-600 mt-2">
+          A 100% client-side backtest engine at <code>/backtest</code>. Pick one of your
+          strategies, a symbol + timeframe, a data source, a starting balance and spread,
+          then hit <em>Run</em>. Thousands of bars process in under a second and you get an
+          equity curve, trade list, and MT5-comparable metrics.
+        </p>
+      </CardContent></Card>
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">Data sources</h3>
+        <ul className="mt-3 space-y-2">
+          <Bullet><strong>Demo data</strong> — deterministic synthetic OHLC for EURUSD / GBPUSD / USDJPY / XAUUSD on M15 / M30 / H1 / H4 / D1. Realistic-looking but <em>not real broker data</em>. Useful for checking that a strategy produces any trades at all.</Bullet>
+          <Bullet><strong>Upload CSV</strong> — the honest path for real results. The parser accepts MT5 Strategy Tester export format, plus any CSV with <code>time, open, high, low, close[, volume]</code> columns. Commas, semicolons, and tabs are all accepted as separators.</Bullet>
+        </ul>
+      </CardContent></Card>
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">Metrics computed</h3>
+        <ul className="mt-3 space-y-2">
+          <Bullet>Net profit (with % return), ending equity, gross profit / gross loss.</Bullet>
+          <Bullet>Total trades, wins, losses, break-even, win rate.</Bullet>
+          <Bullet>Profit factor, expectancy per trade, R-expectancy (mean R multiple).</Bullet>
+          <Bullet>Avg win / loss, largest win / loss.</Bullet>
+          <Bullet>Max drawdown in $ + %, recovery factor (net profit / max DD).</Bullet>
+          <Bullet>Sharpe ratio (trade-return-based).</Bullet>
+          <Bullet>Max consecutive wins / losses.</Bullet>
+        </ul>
+      </CardContent></Card>
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">What's simulated (V1)</h3>
+        <ul className="mt-3 space-y-2">
+          <Bullet><strong>Entries:</strong> EMA/SMA cross, MACD (+ zero), RSI cross/extreme, Stoch cross, Donchian, N-bar breakout, Bollinger break, ATR breakout, previous candle.</Bullet>
+          <Bullet><strong>Filters:</strong> EMA/SMA slope, ADX strength / non-trend, RSI/Stoch/CCI/Williams bands, BB width, ATR band / above-avg, price-vs-MA, MACD side, RSI side, EMA alignment, bar-color, sessions, day-of-week, spread cap.</Bullet>
+          <Bullet><strong>Risk / lot:</strong> ATR risk, fixed risk %, fixed cash risk, fixed lot, % of account, lot per balance, lot from risk.</Bullet>
+          <Bullet><strong>Exits:</strong> fixed pips TP/SL, R:R, ATR TP/SL, time-based exit, end-of-day flatten, trailing stop, ATR trailing, break-even, ATR-multi break-even.</Bullet>
+          <Bullet><strong>Utility gates:</strong> max daily trades, daily loss %, cooldown after SL, max consecutive losses, equity floor.</Bullet>
+        </ul>
+      </CardContent></Card>
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">V1 limitations (on purpose)</h3>
+        <ul className="mt-3 space-y-2">
+          <Bullet>Single open position at a time — <strong>grid / basket / martingale</strong> blocks are skipped with a warning.</Bullet>
+          <Bullet>Spread is a flat value, no variable slippage, no swap, no commission. MT5 Strategy Tester in "every tick" mode is the right tool for realistic broker modeling.</Bullet>
+          <Bullet>Indicators compute on closed bars — intrabar ticks are not simulated.</Bullet>
+          <Bullet>Pip value is approximated at $10 per pip per lot (correct for the 4 built-in symbols at 1 lot; may diverge for exotic pairs).</Bullet>
+          <Bullet><strong>News blocks</strong> and <strong>MTF data</strong> (other than daily-bias approximation) aren't simulated — add the warning to your mental model when reading the numbers.</Bullet>
+        </ul>
+      </CardContent></Card>
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">When to fall back to MT5 Strategy Tester</h3>
+        <p className="text-sm text-gray-600 mt-2">
+          Use the in-browser backtest to iterate: does the strategy fire? Is the equity curve up-and-to-the-right? Are win rate and drawdown in the right ballpark?
+          When the answer is <em>yes</em>, export the <code>.mq5</code> and re-run in MT5 Strategy Tester for:
+        </p>
+        <ul className="mt-3 space-y-2">
+          <Bullet>Tick-level execution + real broker spread / slippage models.</Bullet>
+          <Bullet>Walk-forward optimization + parameter sweeps.</Bullet>
+          <Bullet>Monte Carlo runs + distribution of outcomes.</Bullet>
+          <Bullet>Multi-symbol portfolio tests.</Bullet>
+        </ul>
+      </CardContent></Card>
+    </article>
+  );
+}
+
 function AppearanceDocs() {
   return (
     <article className="prose-docs space-y-6">
