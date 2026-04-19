@@ -47,6 +47,7 @@ type Section =
   | "license"
   | "marketplace"
   | "strategy-tester"
+  | "backtest"
   | "plans"
   | "faq";
 
@@ -61,9 +62,10 @@ const SECTIONS: { id: Section; label: string; icon: React.ReactNode; group?: str
   { id: "nodes", label: "Block library (200+)", icon: <ListTree size={14} />, group: "Build" },
   { id: "appearance", label: "EA Appearance", icon: <Sparkles size={14} />, group: "Build" },
 
+  { id: "backtest", label: "In-browser backtest", icon: <Workflow size={14} />, group: "Ship" },
   { id: "mql5-export", label: "MQL5 export", icon: <Code2 size={14} />, group: "Ship" },
   { id: "license", label: "Protection & licenses", icon: <ShieldCheck size={14} />, group: "Ship" },
-  { id: "strategy-tester", label: "Strategy Tester", icon: <Download size={14} />, group: "Ship" },
+  { id: "strategy-tester", label: "MT5 Strategy Tester", icon: <Download size={14} />, group: "Ship" },
 
   { id: "marketplace", label: "Marketplace", icon: <Hexagon size={14} />, group: "Distribute" },
 
@@ -229,6 +231,7 @@ export default function DocsPage() {
           {active === "nodes" && (
             <NodeReference nodes={filteredNodes} query={query} onQueryChange={setQuery} totalCount={NODE_DEFINITIONS.length} />
           )}
+          {active === "backtest" && <BacktestDocs />}
           {active === "mql5-export" && <Mql5Export />}
           {active === "strategy-tester" && <StrategyTester />}
           {active === "plans" && <PlansSection />}

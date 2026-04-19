@@ -171,7 +171,7 @@ export default function Features() {
                 style={{ background: `radial-gradient(circle at 30% 30%, ${feature.color}08, transparent 70%)` }}
               />
 
-              <div className={`absolute inset-0 p-4 md:p-6 flex flex-col ${feature.size === "large" ? "pb-5" : ""}`}>
+              <div className={`relative md:absolute md:inset-0 p-5 md:p-6 flex flex-col ${feature.size === "large" ? "md:pb-5" : ""}`}>
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 shrink-0 transition-all duration-300 group-hover:scale-110"
                   style={{ background: feature.color + "15", color: feature.color }}
