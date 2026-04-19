@@ -159,10 +159,10 @@ export default function Features() {
               whileHover={{ y: -3 }}
               className={`relative bg-white rounded-2xl border border-gray-100 overflow-hidden group cursor-default transition-shadow hover:shadow-xl hover:shadow-gray-100 ${
                 feature.size === "large"
-                  ? "md:col-span-2 md:row-span-2 min-h-[260px] sm:min-h-[320px] md:min-h-0"
+                  ? "md:col-span-2 md:row-span-2 md:min-h-0"
                   : feature.size === "medium"
-                  ? "md:col-span-2 min-h-[160px] md:min-h-0"
-                  : "min-h-[160px] md:min-h-0"
+                  ? "md:col-span-2 md:min-h-0"
+                  : "md:min-h-0"
               }`}
             >
               {/* Hover glow */}

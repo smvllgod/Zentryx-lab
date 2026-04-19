@@ -608,11 +608,13 @@ export default function Hero() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-100 rounded-full px-4 py-1.5 mb-8"
+              className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-100 rounded-full px-3 sm:px-4 py-1 sm:py-1.5 mb-6 sm:mb-8 max-w-full"
             >
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-sm font-600 text-emerald-700">
-                <strong className="font-800">Zentryx Lab</strong> — No-code MT5 Expert Advisor builder
+              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <span className="text-[11px] sm:text-sm font-600 text-emerald-700 truncate">
+                <strong className="font-800">Zentryx Lab</strong>
+                <span className="hidden sm:inline"> — No-code MT5 Expert Advisor builder</span>
+                <span className="sm:hidden"> — No-code MT5 EA builder</span>
               </span>
             </motion.div>
 
