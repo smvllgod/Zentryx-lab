@@ -22,3 +22,18 @@
   for = "/assets/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+
+# Static export pre-renders a single "_" placeholder for each dynamic admin
+# detail route (see app/admin/strategies/[id]/page.tsx and users/[id]/page.tsx).
+# These rewrites serve that placeholder for any real id; the client reads the
+# id from window.location via useParams() and fetches its own data.
+# force=false is the default, so these only fire when no static file matches.
+[[redirects]]
+  from = "/admin/strategies/*"
+  to = "/admin/strategies/_/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/users/*"
+  to = "/admin/users/_/index.html"
+  status = 200
