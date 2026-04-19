@@ -13,7 +13,6 @@ const links: Record<string, { label: string; href: string }[]> = {
     { label: "Documentation", href: "/docs" },
     { label: "Node Reference", href: "/docs" },
     { label: "MQL5 Export Guide", href: "/docs" },
-    { label: "Roadmap", href: "/roadmap.html" },
     { label: "FAQ", href: "/docs" },
   ],
   Company: [
