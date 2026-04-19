@@ -59,11 +59,12 @@ const ACCOUNT_SIZES = [
 ];
 
 const REFERRAL_SOURCES = [
-  { value: "twitter", label: "Twitter / X" },
-  { value: "youtube", label: "YouTube" },
-  { value: "friend",  label: "Friend / referral" },
-  { value: "search",  label: "Search engine" },
-  { value: "other",   label: "Other" },
+  { value: "twitter",  label: "Twitter / X" },
+  { value: "youtube",  label: "YouTube" },
+  { value: "telegram", label: "Telegram" },
+  { value: "friend",   label: "Friend / referral" },
+  { value: "search",   label: "Search engine" },
+  { value: "other",    label: "Other" },
 ];
 
 interface OnboardingState {
@@ -74,6 +75,7 @@ interface OnboardingState {
   goal: string | null;
   account_size: string | null;
   referral_source: string | null;
+  referral_other: string;   // free-text entered when "other" is selected
 }
 
 const INITIAL: OnboardingState = {
@@ -84,6 +86,7 @@ const INITIAL: OnboardingState = {
   goal: null,
   account_size: null,
   referral_source: null,
+  referral_other: "",
 };
 
 // ────────────────────────────────────────────────────────────────────
@@ -115,7 +118,12 @@ function OnboardingInner() {
     if (!user) { router.replace("/sign-in?returnTo=/onboarding"); return; }
     (async () => {
       const { data } = await getSupabase().from("profiles").select("onboarded").eq("id", user.id).single();
-      if ((data as { onboarded?: boolean } | null)?.onboarded) router.replace(next);
+      if ((data as { onboarded?: boolean } | null)?.onboarded) {
+        // Full navigation — see `navigate()` comment below.
+        const target = next && next.startsWith("/") ? next : "/overview";
+        if (typeof window !== "undefined") window.location.assign(target);
+        else router.replace(target);
+      }
     })();
   }, [user, ready, router, next]);
 
@@ -191,11 +199,31 @@ function OnboardingInner() {
       key: "referral",
       title: "How did you hear about us?",
       subtitle: "Helps us know what's working.",
-      content: <RadioGrid
-        value={state.referral_source}
-        onChange={(v) => setState({ ...state, referral_source: v })}
-        options={REFERRAL_SOURCES}
-      />,
+      content: (
+        <div className="space-y-4">
+          <RadioGrid
+            value={state.referral_source}
+            onChange={(v) => setState({ ...state, referral_source: v })}
+            options={REFERRAL_SOURCES}
+          />
+          {state.referral_source === "other" && (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3">
+              <Label htmlFor="referral-other" className="text-[11px] font-700 uppercase tracking-wider text-emerald-700">
+                Tell us more
+              </Label>
+              <Input
+                id="referral-other"
+                value={state.referral_other}
+                onChange={(e) => setState({ ...state, referral_other: e.target.value })}
+                placeholder="e.g. Reddit /r/algotrading, LinkedIn post, podcast…"
+                autoFocus
+                maxLength={80}
+              />
+              <p className="mt-1.5 text-[10px] text-emerald-700/70">Required when selecting "Other".</p>
+            </div>
+          )}
+        </div>
+      ),
     },
   ];
 
@@ -207,17 +235,28 @@ function OnboardingInner() {
     setSaving(true);
     try {
       const s = getSupabase();
-      await s.from("profiles").update({
+      // When "other" is selected, merge the free-text answer into the source
+      // string — `referral_source` becomes `"other: <text>"` for reporting.
+      const ref = state.referral_source === "other" && state.referral_other.trim()
+        ? `other: ${state.referral_other.trim().slice(0, 80)}`
+        : state.referral_source;
+      const { error } = await s.from("profiles").update({
         trading_level: state.trading_level,
         markets: state.markets,
         trading_styles: state.trading_styles,
         goal: state.goal,
         account_size: state.account_size,
         broker: state.broker || null,
-        referral_source: state.referral_source,
+        referral_source: ref,
         onboarded,
         onboarded_at: new Date().toISOString(),
       }).eq("id", user.id);
+      if (error) {
+        // Surface the error but don't block navigation — onboarding
+        // columns are optional if migration 0005 isn't applied.
+        console.warn("[onboarding save]", error);
+        toast.error("Some fields couldn't be saved: " + error.message);
+      }
     } catch (err) {
       toast.error("Could not save: " + (err as Error).message);
     } finally {
@@ -225,15 +264,32 @@ function OnboardingInner() {
     }
   }
 
+  // Full navigation (not router.replace) — Next.js 16 static-export +
+  // trailingSlash sometimes swallows client-side router.replace calls,
+  // leaving the user stuck on /onboarding. window.location.assign
+  // guarantees the navigation.
+  function navigate(to: string) {
+    const target = to && to.startsWith("/") ? to : "/overview";
+    if (typeof window !== "undefined") {
+      window.location.assign(target);
+    } else {
+      router.replace(target);
+    }
+  }
+
   async function finish() {
+    // Guard: if user picked "Other" as referral source, require the free-text
+    if (state.referral_source === "other" && !state.referral_other.trim()) {
+      toast.error("Please tell us where you heard about us, or skip this question.");
+      return;
+    }
     await save(true);
-    router.replace(next);
+    navigate(next);
   }
 
   async function skipAll() {
     await save(true);
-    toast.info("Skipped — you can set preferences later in Settings.");
-    router.replace(next);
+    navigate(next);
   }
 
   if (!isSupabaseConfigured() || !ready) {
@@ -293,7 +349,7 @@ function OnboardingInner() {
             <Button
               type="button"
               variant="ghost"
-              onClick={() => (step === 0 ? router.replace(next) : setStep(step - 1))}
+              onClick={() => (step === 0 ? skipAll() : setStep(step - 1))}
               disabled={saving}
             >
               {step === 0 ? "Skip all" : "Back"}
