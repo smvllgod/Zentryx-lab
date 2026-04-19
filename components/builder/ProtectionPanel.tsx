@@ -23,6 +23,7 @@ import { Lock, Timer, Building2, ShieldOff, KeyRound, Stamp, EyeOff, Globe2, Cro
 import type { ProtectionConfig } from "@/lib/mql5/protections";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { DateTimePicker } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils/cn";
 
 type Plan = "free" | "pro" | "creator";
@@ -202,10 +203,11 @@ function renderBody(args: {
     return (
       <div>
         <FieldLabel>Expires at (UTC)</FieldLabel>
-        <Input
-          type="datetime-local"
-          value={toLocalInput(cfg.expiresAt)}
-          onChange={(e) => patch("expiryDate", { expiresAt: fromLocalInput(e.target.value) })}
+        <DateTimePicker
+          value={cfg.expiresAt}
+          onChange={(iso) => patch("expiryDate", { expiresAt: iso })}
+          minDate={new Date()}
+          placeholder="Pick an expiry"
         />
         <Hint>EA will refuse to start after this timestamp.</Hint>
       </div>
@@ -378,20 +380,4 @@ function parseCsvNumbers(input: string): number[] {
 
 function parseCsvStrings(input: string): string[] {
   return input.split(",").map((s) => s.trim()).filter(Boolean);
-}
-
-function toLocalInput(iso: string): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (!Number.isFinite(d.getTime())) return "";
-  // Format for <input type="datetime-local"> is YYYY-MM-DDTHH:MM (no seconds).
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-}
-
-function fromLocalInput(local: string): string {
-  if (!local) return "";
-  const d = new Date(local);
-  if (!Number.isFinite(d.getTime())) return "";
-  return d.toISOString();
 }

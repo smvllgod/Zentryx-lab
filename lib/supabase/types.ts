@@ -31,6 +31,9 @@ export interface Database {
           account_size: string | null;
           referral_source: string | null;
           onboarded_at: string | null;
+          bio: string | null;
+          alias: string | null;
+          is_public: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -52,6 +55,9 @@ export interface Database {
           account_size?: string | null;
           referral_source?: string | null;
           onboarded_at?: string | null;
+          bio?: string | null;
+          alias?: string | null;
+          is_public?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -393,6 +399,98 @@ export interface Database {
         Row: { user_id: string; listing_id: string; created_at: string };
         Insert: { user_id: string; listing_id: string; created_at?: string };
         Update: never;
+      };
+      setfiles: {
+        Row: {
+          id: string;
+          user_id: string;
+          listing_id: string | null;
+          strategy_id: string | null;
+          name: string;
+          description: string | null;
+          symbol: string | null;
+          timeframe: string | null;
+          broker: string | null;
+          file_path: string;
+          file_bytes: number | null;
+          scope: "listing" | "strategy" | "personal";
+          is_public: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["setfiles"]["Row"],
+          "id" | "created_at" | "updated_at"
+        > & { id?: string; created_at?: string; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["setfiles"]["Insert"]>;
+      };
+      forum_categories: {
+        Row: {
+          slug: string;
+          label: string;
+          description: string | null;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          slug: string;
+          label: string;
+          description?: string | null;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["forum_categories"]["Insert"]>;
+      };
+      forum_posts: {
+        Row: {
+          id: string;
+          author_id: string;
+          category_slug: string;
+          title: string;
+          body: string;
+          status: "pending" | "approved" | "rejected";
+          rejected_reason: string | null;
+          approved_at: string | null;
+          approved_by: string | null;
+          pinned: boolean;
+          locked: boolean;
+          view_count: number;
+          comment_count: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["forum_posts"]["Row"],
+          "id" | "created_at" | "updated_at" | "status" | "approved_at" | "approved_by" | "rejected_reason" | "pinned" | "locked" | "view_count" | "comment_count"
+        > & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+          status?: "pending" | "approved" | "rejected";
+          approved_at?: string | null;
+          approved_by?: string | null;
+          rejected_reason?: string | null;
+          pinned?: boolean;
+          locked?: boolean;
+          view_count?: number;
+          comment_count?: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["forum_posts"]["Insert"]>;
+      };
+      forum_comments: {
+        Row: {
+          id: string;
+          post_id: string;
+          author_id: string;
+          body: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["forum_comments"]["Row"],
+          "id" | "created_at" | "updated_at"
+        > & { id?: string; created_at?: string; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["forum_comments"]["Insert"]>;
       };
     };
   };

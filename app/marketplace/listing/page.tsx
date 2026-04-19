@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft, Download, Star, ShoppingBag, Calendar, Tag, User, Zap,
-  ChevronLeft, ChevronRight, Image as ImageIcon, Check,
+  ChevronLeft, ChevronRight, Image as ImageIcon, Check, FileCode2,
 } from "lucide-react";
 import { PublicShell } from "@/components/app/public-shell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/input";
 import { getListing, type ListingRow } from "@/lib/marketplace/store";
+import type { PublicProfile } from "@/lib/profiles/client";
+import { countSetfilesForListing, listSetfilesForListing, type SetfileRow } from "@/lib/setfiles/client";
+import { buildListingBundle } from "@/lib/setfiles/bundle";
 import { listReviews, myReviewFor, hasPurchased, writeReview, deleteReview, type ReviewRow } from "@/lib/marketplace/reviews";
 import { formatPrice, formatRelative } from "@/lib/utils/format";
 import { toast } from "@/components/ui/toast";
@@ -32,12 +35,15 @@ function ListingDetailInner() {
   const id = params?.get("id") ?? "";
 
   const [listing, setListing] = useState<ListingRow | null>(null);
-  const [author, setAuthor] = useState<{ full_name: string | null; email: string } | null>(null);
+  const [author, setAuthor] = useState<PublicProfile | null>(null);
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
   const [myReview, setMyReview] = useState<ReviewRow | null>(null);
   const [canReview, setCanReview] = useState(false);
   const [loading, setLoading] = useState(true);
   const [galleryIdx, setGalleryIdx] = useState(0);
+  const [setfileCount, setSetfileCount] = useState(0);
+  const [setfileRows, setSetfileRows] = useState<SetfileRow[]>([]);
+  const [downloading, setDownloading] = useState(false);
 
   async function loadAll() {
     if (!id) return;
@@ -54,18 +60,59 @@ function ListingDetailInner() {
         setReviews(revs);
         setMyReview(mine);
         setCanReview(eligible || !!mine);
-        const { getSupabase, isSupabaseConfigured } = await import("@/lib/supabase/client");
-        if (isSupabaseConfigured()) {
-          const { data } = await getSupabase()
-            .from("profiles")
-            .select("full_name,email")
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            .eq("id", row.author_id as any)
-            .maybeSingle();
-          setAuthor(data as { full_name: string | null; email: string } | null);
-        }
+        const { fetchPublicProfile } = await import("@/lib/profiles/client");
+        setAuthor(await fetchPublicProfile(row.author_id));
+
+        // Setfiles visible to this viewer (buyer + free-listing + owner).
+        const [count, rows] = await Promise.all([
+          countSetfilesForListing(row.id),
+          listSetfilesForListing(row.id),
+        ]);
+        setSetfileCount(count);
+        setSetfileRows(rows);
       }
     } finally { setLoading(false); }
+  }
+
+  async function downloadBundle() {
+    if (!listing) return;
+    setDownloading(true);
+    try {
+      // Fetch the EA source from the latest strategy_version (server-of-truth).
+      const { getSupabase } = await import("@/lib/supabase/client");
+      const db = getSupabase();
+      const { data: version } = await db
+        .from("strategy_versions")
+        .select("generated_code, version")
+        .eq("strategy_id", listing.strategy_id)
+        .order("version", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const source = (version as { generated_code: string | null } | null)?.generated_code ?? "// Source not available — ask the creator.";
+      const baseName = listing.title.replace(/[^a-zA-Z0-9_-]+/g, "_").slice(0, 50) || "Strategy";
+      const bundle = await buildListingBundle({
+        listingId: listing.id,
+        eaFilename: `${baseName}.mq5`,
+        eaSource: source,
+      });
+      const url = URL.createObjectURL(bundle.blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = bundle.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      if (bundle.includedSetfiles > 0) {
+        toast.success(`Downloaded with ${bundle.includedSetfiles} setfile${bundle.includedSetfiles === 1 ? "" : "s"}.`);
+      } else {
+        toast.success("Downloaded.");
+      }
+    } catch (err) {
+      toast.error("Download failed: " + (err as Error).message);
+    } finally {
+      setDownloading(false);
+    }
   }
 
   useEffect(() => { void loadAll(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [id]);
@@ -76,7 +123,8 @@ function ListingDetailInner() {
   const images = [listing.presentation_image_url, ...listing.gallery_urls].filter(Boolean) as string[];
   const free = listing.price_cents === 0;
   const priceLabel = free ? "Free" : formatPrice(listing.price_cents, listing.currency);
-  const authorLabel = author?.full_name ?? author?.email ?? "Anonymous";
+  const authorLabel = author?.display_name ?? "Creator";
+  const isOwn = user?.id != null && user.id === listing.author_id;
   const mean = listing.rating ?? 0;
 
   function prev() { setGalleryIdx((i) => (i - 1 + Math.max(1, images.length)) % Math.max(1, images.length)); }
@@ -144,6 +192,29 @@ function ListingDetailInner() {
               <div className="mt-6">
                 <p className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed">{listing.description}</p>
               </div>
+
+              {setfileRows.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="text-[11px] font-700 uppercase tracking-wider text-gray-500 mb-2 flex items-center gap-1.5">
+                    <FileCode2 size={11} className="text-emerald-600" /> Setfiles included
+                  </h3>
+                  <ul className="space-y-1.5">
+                    {setfileRows.map((sf) => (
+                      <li key={sf.id} className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 bg-gray-50/40 px-3 py-2">
+                        <div className="min-w-0">
+                          <div className="text-[12px] font-600 text-gray-800 truncate">{sf.name}</div>
+                          <div className="text-[10px] text-gray-400 truncate">
+                            {[sf.symbol, sf.timeframe, sf.broker].filter(Boolean).join(" · ") || "No metadata"}
+                          </div>
+                        </div>
+                        {sf.file_bytes != null && (
+                          <span className="text-[10px] text-gray-400 shrink-0">{(sf.file_bytes / 1024).toFixed(1)} KB</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
             <div className="mt-10">
@@ -219,10 +290,22 @@ function ListingDetailInner() {
                 </div>
               )}
               <div className="mt-4 space-y-2">
-                {user ? (
-                  <Button size="lg" className="w-full" onClick={() => toast.info("Purchase flow — Stripe checkout coming soon.")}>
-                    <ShoppingBag size={15} /> {free ? "Get strategy" : "Buy now"}
+                {isOwn ? (
+                  <Button asChild size="lg" variant="secondary" className="w-full">
+                    <a href="/marketplace/listings">
+                      <User size={15} /> Your listing — manage
+                    </a>
                   </Button>
+                ) : user ? (
+                  free ? (
+                    <Button size="lg" className="w-full" onClick={downloadBundle} disabled={downloading}>
+                      <Download size={15} /> {downloading ? "Bundling…" : (setfileCount > 0 ? `Download (EA + ${setfileCount} setfile${setfileCount === 1 ? "" : "s"})` : "Download EA")}
+                    </Button>
+                  ) : (
+                    <Button size="lg" className="w-full" onClick={() => toast.info("Purchase flow — Stripe checkout coming soon.")}>
+                      <ShoppingBag size={15} /> Buy now
+                    </Button>
+                  )
                 ) : (
                   <Button asChild size="lg" className="w-full">
                     <a href={`/sign-in?returnTo=/marketplace/listing?id=${id}`}>
@@ -235,8 +318,27 @@ function ListingDetailInner() {
                 </Button>
               </div>
 
+              {/* Setfiles quick row */}
+              <div className="mt-4">
+                {setfileCount > 0 ? (
+                  <Badge tone="emerald">
+                    <FileCode2 size={10} className="inline mr-1" />
+                    Includes {setfileCount} setfile{setfileCount === 1 ? "" : "s"}
+                  </Badge>
+                ) : (
+                  <Badge tone="slate">
+                    <FileCode2 size={10} className="inline mr-1" />
+                    No setfiles
+                  </Badge>
+                )}
+              </div>
+
               <dl className="mt-5 space-y-2 text-xs border-t border-gray-100 pt-4">
-                <InfoRow label="Author" value={authorLabel} icon={<User size={10} />} />
+                <InfoRow
+                  label="Author"
+                  value={author ? <a href={`/creator/${author.id}`} className="text-emerald-700 hover:underline font-600">{authorLabel}</a> : authorLabel}
+                  icon={<User size={10} />}
+                />
                 <InfoRow label="Downloads" value={String(listing.downloads)} icon={<Download size={10} />} />
                 <InfoRow label="Listed" value={formatRelative(listing.created_at)} icon={<Calendar size={10} />} />
                 <InfoRow label="Gallery" value={`${listing.gallery_urls.length} images`} icon={<ImageIcon size={10} />} />
@@ -374,7 +476,7 @@ function StarsDisplay({ value, size = 14 }: { value: number; size?: number }) {
   );
 }
 
-function InfoRow({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
+function InfoRow({ label, value, icon }: { label: string; value: React.ReactNode; icon: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="inline-flex items-center gap-1.5 text-[10px] font-600 uppercase tracking-wider text-gray-400 shrink-0">

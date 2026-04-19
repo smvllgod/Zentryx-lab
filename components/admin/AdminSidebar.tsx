@@ -15,6 +15,7 @@ import {
   ScrollText,
   ArrowLeft,
   KeyRound,
+  MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -37,6 +38,7 @@ const NAV: NavItem[] = [
 
   { href: "/admin/blocks",          label: "Logic Blocks",   icon: Boxes,           group: "control" },
   { href: "/admin/flags",           label: "Flags / Control",icon: Flag,            group: "control" },
+  { href: "/admin/moderation",      label: "Moderation",     icon: MessageCircle,   group: "control" },
   { href: "/admin/audit",           label: "Audit log",      icon: ScrollText,      group: "control" },
   { href: "/admin/settings",        label: "System",         icon: Settings,        group: "control" },
 ];

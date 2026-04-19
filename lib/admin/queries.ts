@@ -31,7 +31,11 @@ export type AdminAction =
   | "user.impersonate"
   | "license.issue"
   | "license.revoke"
-  | "license.update";
+  | "license.update"
+  | "forum_post.approve"
+  | "forum_post.reject"
+  | "forum_post.pin"
+  | "forum_post.lock";
 
 interface LogArgs {
   action: AdminAction;

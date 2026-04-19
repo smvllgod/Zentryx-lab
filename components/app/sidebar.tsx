@@ -11,6 +11,8 @@ import {
   Settings,
   BookOpen,
   KeyRound,
+  FileCode2,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -19,8 +21,10 @@ const NAV = [
   { href: "/strategies",   label: "My Strategies", icon: FolderKanban },
   { href: "/builder",      label: "Builder",       icon: Workflow },
   { href: "/marketplace",  label: "Marketplace",   icon: Store },
+  { href: "/community",    label: "Community",     icon: Users },
   { href: "/exports",      label: "Exports",       icon: Download },
   { href: "/licenses",     label: "Licenses",      icon: KeyRound },
+  { href: "/setfiles",     label: "Setfiles",      icon: FileCode2 },
   { href: "/docs",         label: "Docs",          icon: BookOpen },
   { href: "/billing",      label: "Billing",       icon: CreditCard },
   { href: "/settings",     label: "Settings",      icon: Settings },

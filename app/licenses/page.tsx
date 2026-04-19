@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { DateTimePicker } from "@/components/ui/calendar";
 import { toast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth/context";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
@@ -267,7 +268,7 @@ function IssueDialog({
         label: label || undefined,
         bound_account: boundAccount ? Number(boundAccount) : undefined,
         bound_broker: boundBroker || undefined,
-        expires_at: expiresAt ? new Date(expiresAt).toISOString() : undefined,
+        expires_at: expiresAt || undefined,
         max_activations: maxActivations ? Number(maxActivations) : undefined,
       });
       toast.success("License issued");
@@ -316,7 +317,12 @@ function IssueDialog({
               <Input value={boundBroker} onChange={(e) => setBoundBroker(e.target.value)} placeholder="IC Markets" />
             </Field>
             <Field label="Expires at (UTC)">
-              <Input type="datetime-local" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+              <DateTimePicker
+                value={expiresAt}
+                onChange={setExpiresAt}
+                minDate={new Date()}
+                placeholder="Never expires"
+              />
             </Field>
             <Field label="Max activations">
               <Input value={maxActivations} onChange={(e) => setMaxActivations(e.target.value)} placeholder="Unlimited" inputMode="numeric" />

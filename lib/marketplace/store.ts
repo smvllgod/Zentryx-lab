@@ -20,13 +20,28 @@ export async function listPublishedListings(filter?: { tag?: string }): Promise<
   return data ?? [];
 }
 
+export interface ListingAuthor {
+  id: string;
+  display_name: string;
+  full_name: string | null;
+  alias: string | null;
+  avatar_url: string | null;
+  /** Email kept for back-compat — may be null since we now query the public view. */
+  email: string | null;
+}
+
 export interface ListingWithAuthor extends ListingRow {
-  author: { id: string; full_name: string | null; email: string } | null;
+  author: ListingAuthor | null;
 }
 
 /**
  * Published listings joined with author display info. Used by the
  * public marketplace UI.
+ *
+ * The author is resolved via the `public_profiles` view (safe subset of
+ * `profiles` — no email/plan/role). With migration 0008's "profiles
+ * public read" policy, any viewer sees every public-opt-in creator,
+ * so listing cards show real names instead of "Anonymous".
  */
 export async function listPublishedListingsWithAuthors(): Promise<ListingWithAuthor[]> {
   if (!isSupabaseConfigured()) return [];
@@ -41,13 +56,40 @@ export async function listPublishedListingsWithAuthors(): Promise<ListingWithAut
   if (rows.length === 0) return [];
   const authorIds = Array.from(new Set(rows.map((r) => r.author_id)));
   const { data: authors } = await s
-    .from("profiles")
-    .select("id,full_name,email")
+    .from("public_profiles")
+    .select("id, display_name, full_name, alias, avatar_url")
     .in("id", authorIds);
-  const byId = new Map(
-    (authors ?? []).map((a: { id: string; full_name: string | null; email: string }) => [a.id, a]),
-  );
+  const byId = new Map<string, ListingAuthor>();
+  for (const a of (authors ?? []) as {
+    id: string;
+    display_name: string;
+    full_name: string | null;
+    alias: string | null;
+    avatar_url: string | null;
+  }[]) {
+    byId.set(a.id, { ...a, email: null });
+  }
   return rows.map((r) => ({ ...r, author: byId.get(r.author_id) ?? null }));
+}
+
+/** Single listing with its author — used by the detail page. */
+export async function getListingWithAuthor(id: string): Promise<ListingWithAuthor | null> {
+  if (!isSupabaseConfigured()) return null;
+  const s = db();
+  const { data: listing, error } = await s
+    .from("marketplace_listings")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !listing) return null;
+  const row = listing as ListingRow;
+  const { data: author } = await s
+    .from("public_profiles")
+    .select("id, display_name, full_name, alias, avatar_url")
+    .eq("id", row.author_id)
+    .maybeSingle();
+  const a = author as { id: string; display_name: string; full_name: string | null; alias: string | null; avatar_url: string | null } | null;
+  return { ...row, author: a ? { ...a, email: null } : null };
 }
 
 export async function listOwnListings(): Promise<ListingRow[]> {

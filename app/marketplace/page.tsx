@@ -236,7 +236,7 @@ export default function MarketplacePage() {
               <EmptyState />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filtered.map((l) => <ListingCard key={l.id} listing={l} signedIn={!!user} />)}
+                {filtered.map((l) => <ListingCard key={l.id} listing={l} signedIn={!!user} viewerId={user?.id ?? null} />)}
               </div>
             )}
           </div>
@@ -266,16 +266,17 @@ function FeaturedCard({ listing: l }: { listing: ListingWithAuthor }) {
       <div className="relative mt-4 flex items-center gap-3 text-[10px] text-white/70">
         <span className="inline-flex items-center gap-1"><Download size={10} /> {l.downloads}</span>
         {l.rating != null && <span className="inline-flex items-center gap-1"><Star size={10} className="text-amber-400 fill-amber-400" /> {l.rating.toFixed(1)}</span>}
-        {l.author && <span className="truncate">by {l.author.full_name ?? l.author.email}</span>}
+        {l.author && <span className="truncate">by {l.author.display_name}</span>}
       </div>
     </a>
   );
 }
 
-function ListingCard({ listing: l, signedIn }: { listing: ListingWithAuthor; signedIn: boolean }) {
+function ListingCard({ listing: l, signedIn, viewerId }: { listing: ListingWithAuthor; signedIn: boolean; viewerId?: string | null }) {
   const free = l.price_cents === 0;
   const price = free ? "Free" : `$${(l.price_cents / 100).toFixed(2)}`;
-  const authorLabel = l.author?.full_name ?? l.author?.email ?? "Anonymous";
+  const authorLabel = l.author?.display_name ?? l.author?.full_name ?? "Creator";
+  const isOwn = viewerId != null && viewerId === l.author_id;
 
   return (
     <article className="group relative flex flex-col rounded-2xl border border-gray-200/80 bg-white hover:border-gray-300 hover:shadow-[0_8px_24px_rgba(15,23,42,0.06)] hover:-translate-y-0.5 transition-all overflow-hidden">
@@ -314,16 +315,24 @@ function ListingCard({ listing: l, signedIn }: { listing: ListingWithAuthor; sig
           <span className="ml-auto truncate">{formatRelative(l.created_at)}</span>
         </div>
         <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white text-[9px] font-700 flex items-center justify-center shrink-0">
-              {(authorLabel.match(/\b\w/g) ?? []).slice(0, 2).join("").toUpperCase()}
-            </div>
+          <a href={l.author ? `/creator/${l.author.id}` : undefined} className="flex items-center gap-2 min-w-0 group/a" onClick={(e) => { if (!l.author) e.preventDefault(); }}>
+            {l.author?.avatar_url ? (
+              <img src={l.author.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
+            ) : (
+              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white text-[9px] font-700 flex items-center justify-center shrink-0">
+                {(authorLabel.match(/\b\w/g) ?? []).slice(0, 2).join("").toUpperCase()}
+              </div>
+            )}
             <div className="min-w-0">
-              <div className="text-[11px] font-600 text-gray-900 truncate">{authorLabel}</div>
+              <div className="text-[11px] font-600 text-gray-900 truncate group-hover/a:text-emerald-700">{authorLabel}</div>
               <div className="text-[9px] text-gray-400">Creator</div>
             </div>
-          </div>
-          {signedIn ? (
+          </a>
+          {isOwn ? (
+            <a href={`/marketplace/listings`} className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-600 text-[10px] font-700 px-2.5 py-1 hover:bg-gray-200">
+              Your listing
+            </a>
+          ) : signedIn ? (
             <a href={`/marketplace/listing?id=${l.id}`} className="inline-flex items-center gap-1 text-[11px] font-700 text-emerald-600 hover:text-emerald-700">
               {free ? "Get" : "Buy"} →
             </a>

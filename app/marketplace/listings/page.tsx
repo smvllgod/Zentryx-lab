@@ -33,6 +33,7 @@ import { canPublishToMarketplace } from "@/lib/billing/gating";
 import { useAuth } from "@/lib/auth/context";
 import { formatPrice, formatRelative } from "@/lib/utils/format";
 import { SingleImageUploader, GalleryUploader } from "@/components/marketplace/ImageUploader";
+import { SetfilesManager } from "@/components/setfiles/SetfilesManager";
 
 export default function MyListingsPage() {
   const { profile } = useAuth();
@@ -370,6 +371,16 @@ function EditListingDialog({
                 </button>
               ))}
             </div>
+          </div>
+
+          <div>
+            <Label>Setfiles</Label>
+            <SetfilesManager
+              listingId={listing.id}
+              hidePublicToggle
+              title="Setfiles attached to this listing"
+              description="Buyers of this strategy get these .set files alongside the .mq5 download."
+            />
           </div>
         </div>
 

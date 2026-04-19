@@ -37,3 +37,13 @@
   from = "/admin/users/*"
   to = "/admin/users/_/index.html"
   status = 200
+
+[[redirects]]
+  from = "/creator/*"
+  to = "/creator/_/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/community/posts/*"
+  to = "/community/posts/_/index.html"
+  status = 200
