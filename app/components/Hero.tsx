@@ -612,7 +612,7 @@ export default function Hero() {
             >
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span className="text-sm font-600 text-emerald-700">
-                No-code MT5 strategy builder
+                <strong className="font-800">Zentryx Lab</strong> — No-code MT5 Expert Advisor builder
               </span>
             </motion.div>
 
@@ -650,7 +650,7 @@ export default function Hero() {
               transition={{ delay: 0.6, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
               className="text-lg text-gray-500 leading-relaxed mb-10 max-w-md"
             >
-              Design and export production MT5 Expert Advisors visually. Drop nodes, wire them, generate clean MQL5 — and let the built-in AI build alongside you.
+              <strong className="text-gray-900 font-700">Zentryx Lab</strong> is a no-code platform to design, export and ship MetaTrader 5 Expert Advisors visually. Drop nodes, wire them, generate clean MQL5 — and let the built-in AI build alongside you.
             </motion.p>
 
             <motion.div

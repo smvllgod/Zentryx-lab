@@ -44,14 +44,16 @@ export default function Nav() {
       >
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           {/* Logo */}
-          <a href="/" className="flex items-center gap-2 group">
+          <a href="/" className="flex items-center gap-2 group" aria-label="Zentryx Lab" title="Zentryx Lab — no-code MT5 Expert Advisor builder">
             <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M8 2L14 5V11L8 14L2 11V5L8 2Z" fill="white" fillOpacity="0.9" />
                 <path d="M8 5L11 6.5V9.5L8 11L5 9.5V6.5L8 5Z" fill="white" />
               </svg>
             </div>
-            <div className="flex flex-col leading-none">
+            {/* Screen-reader + crawler-friendly full brand string */}
+            <span className="sr-only">Zentryx Lab</span>
+            <div className="flex flex-col leading-none" aria-hidden="true">
               <span className="text-[10px] font-500 text-gray-400 tracking-widest uppercase">Zentryx</span>
               <span className="text-sm font-700 text-gray-900 -mt-0.5">Lab</span>
             </div>

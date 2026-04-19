@@ -39,13 +39,14 @@ export default function Footer() {
                   <path d="M8 5L11 6.5V9.5L8 11L5 9.5V6.5L8 5Z" fill="white" />
                 </svg>
               </div>
-              <div className="flex flex-col leading-none">
+              <span className="sr-only">Zentryx Lab</span>
+              <div className="flex flex-col leading-none" aria-hidden="true">
                 <span className="text-[10px] font-500 text-gray-400 tracking-widest uppercase">Zentryx</span>
                 <span className="text-sm font-700 text-gray-900 -mt-0.5">Lab</span>
               </div>
             </div>
             <p className="text-sm text-gray-500 leading-relaxed max-w-xs">
-              No-code visual builder for MT4 and MT5 Expert Advisors. Build, export, and deploy automated trading strategies.
+              <strong className="font-700 text-gray-700">Zentryx Lab</strong> is a no-code visual builder for MetaTrader 5 Expert Advisors. Build, export, and deploy automated trading strategies — no code required.
             </p>
             <div className="flex gap-3 mt-6">
               {/* X (Twitter) */}
