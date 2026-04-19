@@ -74,16 +74,16 @@ export default function FinalCTA() {
             Build your first EA in under 10 minutes.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center max-w-md sm:max-w-none mx-auto">
             <MagneticButton
-              className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-700 px-8 py-4 rounded-2xl shadow-xl shadow-emerald-500/30 transition-colors text-base"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-700 px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl shadow-xl shadow-emerald-500/30 transition-colors text-base"
             >
               Start Building Free
               <ArrowRight size={18} />
             </MagneticButton>
             <a
               href="#how-it-works"
-              className="inline-flex items-center gap-2 bg-white border border-gray-200 text-gray-700 hover:border-emerald-200 hover:text-emerald-600 font-600 px-8 py-4 rounded-2xl transition-all text-base shadow-sm"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 hover:border-emerald-200 hover:text-emerald-600 font-600 px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl transition-all text-base shadow-sm"
             >
               See how it works
             </a>

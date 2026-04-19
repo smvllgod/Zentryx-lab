@@ -90,10 +90,11 @@ export default function Nav() {
             </motion.a>
           </div>
 
-          {/* Mobile menu button */}
+          {/* Mobile menu button — 40×40 touch target */}
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            className="md:hidden w-10 h-10 rounded-lg hover:bg-gray-100 transition-colors inline-flex items-center justify-center"
           >
             {mobileOpen ? <X size={20} /> : <Menu size={20} />}
           </button>

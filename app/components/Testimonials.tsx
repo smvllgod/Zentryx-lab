@@ -72,7 +72,7 @@ export default function Testimonials() {
               initial={{ opacity: 0, y: 30 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ delay: i * 0.1, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              className="bg-gray-50 rounded-2xl border border-gray-100 p-7 hover:border-emerald-100 hover:shadow-lg hover:shadow-emerald-500/5 transition-all duration-300 group"
+              className="bg-gray-50 rounded-2xl border border-gray-100 p-5 sm:p-6 md:p-7 hover:border-emerald-100 hover:shadow-lg hover:shadow-emerald-500/5 transition-all duration-300 group"
             >
               {/* Stars */}
               <div className="flex gap-0.5 mb-4">

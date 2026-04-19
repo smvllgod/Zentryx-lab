@@ -130,7 +130,7 @@ export default function Pricing() {
                     key={annual ? "annual" : "monthly"}
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="text-5xl font-800 text-gray-900"
+                    className="text-4xl sm:text-5xl font-800 text-gray-900"
                   >
                     ${annual ? plan.price.annual : plan.price.monthly}
                   </motion.span>

@@ -24,7 +24,7 @@ export default function LogoBar() {
           <motion.div
             animate={{ x: [0, "-50%"] }}
             transition={{ duration: 30, ease: "linear", repeat: Infinity }}
-            className="flex items-center gap-6 md:gap-12 shrink-0"
+            className="flex items-center gap-3 sm:gap-6 md:gap-12 shrink-0"
           >
             {logos.map((logo, i) => (
               <div

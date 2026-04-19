@@ -35,7 +35,7 @@ export default function CookieBanner() {
           transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
           className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-xl px-4"
         >
-          <div className="bg-white border border-gray-200 rounded-2xl shadow-2xl shadow-gray-200/60 p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="bg-white border border-gray-200 rounded-2xl shadow-2xl shadow-gray-200/60 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
             <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
               <Cookie size={18} className="text-emerald-500" />
             </div>
@@ -46,22 +46,23 @@ export default function CookieBanner() {
                 <a href="/privacy" className="text-emerald-500 font-600 hover:underline">Privacy Policy</a>.
               </p>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 w-full sm:w-auto">
               <button
                 onClick={decline}
-                className="text-xs font-600 text-gray-500 hover:text-gray-700 px-3 py-2 rounded-xl hover:bg-gray-50 transition-colors"
+                className="flex-1 sm:flex-initial text-xs font-600 text-gray-500 hover:text-gray-700 px-3 py-2 rounded-xl hover:bg-gray-50 transition-colors"
               >
                 Decline
               </button>
               <button
                 onClick={accept}
-                className="text-xs font-700 text-white bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-xl transition-colors shadow-sm shadow-emerald-500/25"
+                className="flex-1 sm:flex-initial text-xs font-700 text-white bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-xl transition-colors shadow-sm shadow-emerald-500/25"
               >
                 Accept all
               </button>
               <button
                 onClick={decline}
-                className="p-1.5 text-gray-300 hover:text-gray-500 transition-colors"
+                aria-label="Close"
+                className="hidden sm:inline-flex p-1.5 text-gray-300 hover:text-gray-500 transition-colors"
               >
                 <X size={16} />
               </button>

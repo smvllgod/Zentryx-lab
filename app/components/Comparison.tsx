@@ -103,7 +103,7 @@ export default function Comparison() {
               key={i}
               className={`grid grid-cols-4 border-b border-gray-50 last:border-0 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/30"}`}
             >
-              <div className="px-6 py-4 text-sm text-gray-600 font-500 flex items-center">{row.feature}</div>
+              <div className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-600 font-500 flex items-center">{row.feature}</div>
               {/* Zentryx — highlighted */}
               <div className="px-4 py-4 flex items-center justify-center bg-emerald-50/40">
                 <Cell value={row.zentryx} />

@@ -618,7 +618,7 @@ export default function Hero() {
 
             <div className="mb-6">
               <motion.h1
-                className="text-4xl md:text-5xl xl:text-6xl font-800 leading-[1.05] tracking-tight text-gray-900"
+                className="text-[32px] sm:text-4xl md:text-5xl xl:text-6xl font-800 leading-[1.08] sm:leading-[1.05] tracking-tight text-gray-900"
                 initial="hidden"
                 animate="visible"
                 variants={{
@@ -648,7 +648,7 @@ export default function Hero() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              className="text-lg text-gray-500 leading-relaxed mb-10 max-w-md"
+              className="text-base sm:text-lg text-gray-500 leading-relaxed mb-8 sm:mb-10 max-w-md"
             >
               <strong className="text-gray-900 font-700">Zentryx Lab</strong> is a no-code platform to design, export and ship MetaTrader 5 Expert Advisors visually. Drop nodes, wire them, generate clean MQL5 — and let the built-in AI build alongside you.
             </motion.p>
