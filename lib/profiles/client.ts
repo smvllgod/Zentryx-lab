@@ -115,3 +115,79 @@ export async function fetchLeaderboard(limit = 20): Promise<CreatorStats[]> {
   if (error) return [];
   return (data ?? []) as CreatorStats[];
 }
+
+// ── Follows ───────────────────────────────────────────────────────
+
+export interface FollowCounts {
+  followers_count: number;
+  following_count: number;
+}
+
+export async function fetchFollowCounts(userId: string): Promise<FollowCounts> {
+  if (!isSupabaseConfigured()) return { followers_count: 0, following_count: 0 };
+  const { data } = await db()
+    .from("creator_follow_counts")
+    .select("followers_count, following_count")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return (data as FollowCounts) ?? { followers_count: 0, following_count: 0 };
+}
+
+export async function isFollowing(creatorId: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  const s = db();
+  const { data: { user } } = await s.auth.getUser();
+  if (!user) return false;
+  if (user.id === creatorId) return false;
+  const { data } = await s
+    .from("creator_follows")
+    .select("creator_id")
+    .eq("follower_id", user.id)
+    .eq("creator_id", creatorId)
+    .maybeSingle();
+  return Boolean(data);
+}
+
+export async function followCreator(creatorId: string): Promise<void> {
+  const s = db();
+  const { data: { user } } = await s.auth.getUser();
+  if (!user) throw new Error("Sign in to follow creators.");
+  if (user.id === creatorId) throw new Error("You can't follow yourself.");
+  const { error } = await s
+    .from("creator_follows")
+    .insert({ follower_id: user.id, creator_id: creatorId });
+  // 23505 = unique_violation on (follower_id, creator_id) — race is fine.
+  if (error && error.code !== "23505") throw error;
+}
+
+export async function unfollowCreator(creatorId: string): Promise<void> {
+  const s = db();
+  const { data: { user } } = await s.auth.getUser();
+  if (!user) throw new Error("Not signed in.");
+  const { error } = await s
+    .from("creator_follows")
+    .delete()
+    .eq("follower_id", user.id)
+    .eq("creator_id", creatorId);
+  if (error) throw error;
+}
+
+export interface FollowedListing {
+  listing_id: string;
+  title: string;
+  price_cents: number;
+  currency: string;
+  thumbnail_url: string | null;
+  author_id: string;
+  author_name: string;
+  author_avatar: string | null;
+  created_at: string;
+}
+
+export async function fetchFollowedFeed(limit = 20): Promise<FollowedListing[]> {
+  if (!isSupabaseConfigured()) return [];
+  const { data, error } = await db()
+    .rpc("followed_creators_feed", { _limit: limit });
+  if (error) return [];
+  return (data ?? []) as FollowedListing[];
+}

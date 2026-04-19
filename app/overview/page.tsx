@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth/context";
 import { formatRelative } from "@/lib/utils/format";
 import { PLANS } from "@/lib/billing/plans";
 import { TemplatePicker } from "@/components/templates/TemplatePicker";
+import { FollowedFeed } from "@/components/profiles/FollowedFeed";
 
 export default function OverviewPage() {
   const { user, profile } = useAuth();
@@ -79,6 +80,9 @@ export default function OverviewPage() {
           </CardContent>
         </Card>
       ) : null}
+
+      {/* Recent listings from creators the current user follows. Self-hiding. */}
+      <FollowedFeed limit={6} />
 
       <Card>
         <CardContent>

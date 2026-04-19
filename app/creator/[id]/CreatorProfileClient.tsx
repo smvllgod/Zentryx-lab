@@ -8,14 +8,15 @@
 // public_profiles view RLS).
 
 import { useEffect, useState } from "react";
-import { Calendar, Download, Package, Star, User, ArrowLeft } from "lucide-react";
+import { Calendar, Download, Package, Star, User, ArrowLeft, Users } from "lucide-react";
 import { PublicShell } from "@/components/app/public-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TrustBadge } from "@/components/profiles/TrustBadge";
-import { fetchPublicProfile, fetchCreatorStats, type PublicProfile, type CreatorStats } from "@/lib/profiles/client";
+import { FollowButton } from "@/components/profiles/FollowButton";
+import { fetchPublicProfile, fetchCreatorStats, fetchFollowCounts, type PublicProfile, type CreatorStats, type FollowCounts } from "@/lib/profiles/client";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import { formatRelative } from "@/lib/utils/format";
 
@@ -55,6 +56,7 @@ export default function CreatorProfileClient() {
 
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [stats, setStats] = useState<CreatorStats | null>(null);
+  const [followCounts, setFollowCounts] = useState<FollowCounts>({ followers_count: 0, following_count: 0 });
   const [listings, setListings] = useState<MarketplaceRow[]>([]);
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,14 +68,16 @@ export default function CreatorProfileClient() {
     (async () => {
       setLoading(true);
       try {
-        const [p, s] = await Promise.all([
+        const [p, s, fc] = await Promise.all([
           fetchPublicProfile(id),
           fetchCreatorStats(id),
+          fetchFollowCounts(id),
         ]);
         if (!alive) return;
         if (!p) { setNotFound(true); return; }
         setProfile(p);
         setStats(s);
+        setFollowCounts(fc);
 
         if (!isSupabaseConfigured()) return;
         const db = getSupabase();
@@ -139,14 +143,27 @@ export default function CreatorProfileClient() {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-lg sm:text-xl md:text-2xl font-700 text-gray-900 break-words min-w-0">{profile.display_name}</h1>
-                {stats && <TrustBadge level={stats.trust_level} size="md" />}
+              <div className="flex flex-wrap items-center gap-2 justify-between">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-lg sm:text-xl md:text-2xl font-700 text-gray-900 break-words min-w-0">{profile.display_name}</h1>
+                  {stats && <TrustBadge level={stats.trust_level} size="md" />}
+                </div>
+                <FollowButton
+                  creatorId={profile.id}
+                  onChange={(following) => {
+                    setFollowCounts((c) => ({
+                      ...c,
+                      followers_count: Math.max(0, c.followers_count + (following ? 1 : -1)),
+                    }));
+                  }}
+                />
               </div>
               {profile.alias && profile.full_name && (
                 <div className="mt-0.5 text-xs text-gray-500">{profile.full_name}</div>
               )}
               <div className="mt-3 flex items-center gap-2 sm:gap-3 text-[11px] text-gray-500 flex-wrap">
+                <span className="inline-flex items-center gap-1"><Users size={11} /> <strong className="text-gray-700 tabular-nums">{followCounts.followers_count}</strong> follower{followCounts.followers_count === 1 ? "" : "s"}</span>
+                <span className="inline-flex items-center gap-1 text-gray-400"><Users size={11} /> {followCounts.following_count} following</span>
                 <span className="inline-flex items-center gap-1"><Calendar size={11} /> Joined {formatRelative(profile.created_at)}</span>
                 <span className="inline-flex items-center gap-1"><Package size={11} /> {stats?.listing_count ?? 0} listing{(stats?.listing_count ?? 0) === 1 ? "" : "s"}</span>
                 {(stats?.reviews_received ?? 0) > 0 && (
