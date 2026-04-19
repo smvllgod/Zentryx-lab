@@ -104,14 +104,15 @@ export default function StrategyModules() {
         {/* Cards grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {modules.map((mod, i) => (
-            <motion.div
+            <motion.a
               key={i}
+              href="/docs"
               initial={{ opacity: 0, y: 30 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ delay: i * 0.08, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
               onHoverStart={() => setHovered(i)}
               onHoverEnd={() => setHovered(null)}
-              className="relative group cursor-pointer"
+              className="relative group cursor-pointer block"
             >
               <motion.div
                 animate={{
@@ -178,7 +179,7 @@ export default function StrategyModules() {
                   Explore module <span>→</span>
                 </motion.div>
               </motion.div>
-            </motion.div>
+            </motion.a>
           ))}
         </div>
       </div>
