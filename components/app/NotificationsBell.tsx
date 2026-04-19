@@ -1,17 +1,17 @@
 "use client";
 
 // Topbar notification bell — dropdown with recent notifications, unread
-// counter, mark-as-read per item + mark-all-read. Realtime via Supabase
-// subscription so the bell updates live while the dropdown stays open.
+// counter, mark-as-read per item + mark-all-read. Polls on open and on
+// window focus — no realtime subscription (keeps the bundle minimal and
+// avoids socket leaks / aggressive retries that crashed the tab).
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Component, useCallback, useEffect, useState, type ReactNode } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import {
   Bell, Check, CheckCheck, ExternalLink, MessageCircle, ShoppingBag,
   Star, ShieldCheck, Trash2, AlertTriangle, KeyRound,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
-import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import {
   countUnread,
   listMyNotifications,
@@ -46,7 +46,24 @@ const TONE: Record<NotificationKind, string> = {
   system:            "bg-gray-100 text-gray-600",
 };
 
+// Fail-soft wrapper so a bad render inside the bell never white-screens
+// the whole page. Any crash just hides the bell silently.
+class BellErrorBoundary extends Component<{ children: ReactNode }, { broken: boolean }> {
+  state = { broken: false };
+  static getDerivedStateFromError() { return { broken: true }; }
+  componentDidCatch(err: unknown) { if (typeof console !== "undefined") console.warn("NotificationsBell crashed:", err); }
+  render() { return this.state.broken ? null : this.props.children; }
+}
+
 export function NotificationsBell() {
+  return (
+    <BellErrorBoundary>
+      <NotificationsBellInner />
+    </BellErrorBoundary>
+  );
+}
+
+function NotificationsBellInner() {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<NotificationRow[]>([]);
@@ -60,41 +77,28 @@ export function NotificationsBell() {
       const [list, n] = await Promise.all([listMyNotifications({ limit: 20 }), countUnread()]);
       setRows(list);
       setUnread(n);
+    } catch {
+      // Swallow — the bell is non-critical, never take down the page.
     } finally {
       setLoading(false);
     }
   }, [user]);
 
-  // Initial fetch on mount + whenever auth changes.
+  // Initial fetch on mount + whenever auth changes. Defer one tick so we
+  // don't pile synchronous work onto the hydrate frame.
   useEffect(() => {
     if (!user) return;
-    void refresh();
+    const t = setTimeout(() => { void refresh(); }, 120);
+    return () => clearTimeout(t);
   }, [user, refresh]);
 
-  // Live updates via Supabase Realtime. Subscribes to INSERTs on the
-  // user's own notifications row. Close + re-open the subscription when
-  // the user id changes.
+  // Poll on focus — cheap and avoids opening a websocket for every user.
   useEffect(() => {
-    if (!user || !isSupabaseConfigured()) return;
-    const s = getSupabase();
-    const channel = s
-      .channel(`notifications:${user.id}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
-        () => { void refresh(); },
-      )
-      .subscribe();
-    return () => { void s.removeChannel(channel); };
-  }, [user, refresh]);
-
-  // Poll as a fallback when the tab regains focus (realtime sometimes
-  // drops silently after long idle).
-  useEffect(() => {
+    if (!user) return;
     function onFocus() { void refresh(); }
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
-  }, [refresh]);
+  }, [user, refresh]);
 
   async function handleOpenChange(next: boolean) {
     setOpen(next);
