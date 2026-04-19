@@ -7,6 +7,8 @@ import { StatCard } from "@/components/admin/StatCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/select";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { BlocksHeatmap } from "@/components/admin/BlocksHeatmap";
 import {
   BLOCK_REGISTRY,
   FAMILY_META,
@@ -25,6 +27,9 @@ export default function AdminBlocksPage() {
   const [familyFilter, setFamilyFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [loading, setLoading] = useState(true);
+
+  const [hiddenConfirm, setHiddenConfirm] = useState<null | { block: BlockDefinition; hide: boolean }>(null);
+  const [resetConfirm, setResetConfirm] = useState<null | BlockDefinition>(null);
 
   async function reload() {
     setLoading(true);
@@ -45,11 +50,6 @@ export default function AdminBlocksPage() {
     return out.sort((a, b) => (analytics.get(b.id)?.usage_count ?? 0) - (analytics.get(a.id)?.usage_count ?? 0));
   }, [familyFilter, statusFilter, analytics, overrides]);
 
-  const totalActive = BLOCK_REGISTRY.filter((b) => (overrides.get(b.id)?.force_status ?? b.status) === "active").length;
-  const totalBeta = BLOCK_REGISTRY.filter((b) => (overrides.get(b.id)?.force_status ?? b.status) === "beta").length;
-  const totalPlanned = BLOCK_REGISTRY.filter((b) => (overrides.get(b.id)?.force_status ?? b.status) === "planned").length;
-  const totalDisabled = BLOCK_REGISTRY.filter((b) => (overrides.get(b.id)?.force_status ?? b.status) === "disabled").length;
-
   async function patchOverride(id: string, patch: { force_status?: string; force_plan?: string; force_hidden?: boolean }) {
     try {
       await setBlockOverride(id, patch);
@@ -60,10 +60,13 @@ export default function AdminBlocksPage() {
     }
   }
 
+  const analyticsForHeatmap = useMemo(() => new Map(Array.from(analytics.entries()).map(([k, v]) => [k, { usage_count: v.usage_count }])), [analytics]);
+
   return (
     <AdminShell
       title="Logic blocks"
-      subtitle="Registry, usage counts, status & plan overrides."
+      subtitle={`${BLOCK_REGISTRY.length} blocks · ${Object.keys(FAMILY_META).length} families`}
+      breadcrumbs={[{ label: "Admin", href: "/admin" }, { label: "Logic blocks" }]}
       actions={
         <div className="flex items-center gap-2">
           <NativeSelect value={familyFilter} onChange={(e) => setFamilyFilter(e.target.value)}>
@@ -79,15 +82,20 @@ export default function AdminBlocksPage() {
             <option value="planned">Planned</option>
             <option value="disabled">Disabled</option>
           </NativeSelect>
-          <Button variant="secondary" size="sm" onClick={reload}>Refresh</Button>
+          <Button size="sm" variant="secondary" onClick={reload}>Refresh</Button>
         </div>
       }
     >
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
-        <StatCard label="Total blocks" value={BLOCK_REGISTRY.length} hint={`${Object.keys(FAMILY_META).length} families`} />
-        <StatCard label="Active" value={totalActive} tone="emerald" />
-        <StatCard label="Beta" value={totalBeta} tone="purple" />
-        <StatCard label="Planned / disabled" value={totalPlanned + totalDisabled} tone={totalDisabled > 0 ? "amber" : "default"} />
+        <StatCard label="Total blocks" value={BLOCK_REGISTRY.length} />
+        <StatCard label="Active" value={BLOCK_REGISTRY.filter((b) => (overrides.get(b.id)?.force_status ?? b.status) === "active").length} tone="emerald" />
+        <StatCard label="Beta" value={BLOCK_REGISTRY.filter((b) => (overrides.get(b.id)?.force_status ?? b.status) === "beta").length} tone="purple" />
+        <StatCard label="Planned / disabled" value={BLOCK_REGISTRY.filter((b) => ["planned","disabled"].includes(overrides.get(b.id)?.force_status ?? b.status)).length} tone="amber" />
+      </div>
+
+      <div className="mb-5">
+        <h2 className="text-[12px] font-700 uppercase tracking-wider text-gray-500 mb-3">Usage by family</h2>
+        <BlocksHeatmap analytics={analyticsForHeatmap} />
       </div>
 
       <DataTable
@@ -95,100 +103,92 @@ export default function AdminBlocksPage() {
         rowKey={(b) => b.id}
         loading={loading}
         columns={[
-          {
-            header: "Block",
-            render: (b) => (
-              <div className="min-w-0">
-                <div className="text-sm font-600 text-gray-900 truncate">{b.displayName}</div>
-                <code className="text-[10px] text-gray-400">{b.id}</code>
+          { header: "Block", render: (b) => (
+            <div className="min-w-0">
+              <div className="text-sm font-600 text-gray-900 truncate">{b.displayName}</div>
+              <code className="text-[10px] text-gray-400">{b.id}</code>
+            </div>
+          ) },
+          { header: "Family", width: "130px", render: (b) => (
+            <span className="inline-flex items-center gap-1.5 text-xs text-gray-600">
+              <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: FAMILY_META[b.family].color }} />
+              {FAMILY_META[b.family].shortLabel}
+            </span>
+          ) },
+          { header: "Plan", width: "120px", render: (b) => (
+            <NativeSelect
+              value={overrides.get(b.id)?.force_plan ?? b.plan}
+              onChange={(e) => patchOverride(b.id, { force_plan: e.target.value })}
+            >
+              <option value="free">free</option>
+              <option value="pro">pro</option>
+              <option value="creator">creator</option>
+            </NativeSelect>
+          ) },
+          { header: "Status", width: "130px", render: (b) => (
+            <NativeSelect
+              value={overrides.get(b.id)?.force_status ?? b.status}
+              onChange={(e) => patchOverride(b.id, { force_status: e.target.value })}
+            >
+              <option value="active">active</option>
+              <option value="beta">beta</option>
+              <option value="planned">planned</option>
+              <option value="disabled">disabled</option>
+            </NativeSelect>
+          ) },
+          { header: "Usage", width: "90px", align: "right", render: (b) => {
+            const a = analytics.get(b.id);
+            return (
+              <div>
+                <div className="text-xs font-700 text-gray-900">{a?.usage_count ?? 0}</div>
+                <div className="text-[9px] text-gray-400">{a?.unique_users ?? 0} users</div>
               </div>
-            ),
-          },
-          {
-            header: "Family",
-            width: "130px",
-            render: (b) => (
-              <span className="inline-flex items-center gap-1.5 text-xs text-gray-600">
-                <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: FAMILY_META[b.family].color }} />
-                {FAMILY_META[b.family].shortLabel}
-              </span>
-            ),
-          },
-          {
-            header: "Plan",
-            width: "130px",
-            render: (b) => (
-              <NativeSelect
-                value={overrides.get(b.id)?.force_plan ?? b.plan}
-                onChange={(e) => patchOverride(b.id, { force_plan: e.target.value })}
-              >
-                <option value="free">free</option>
-                <option value="pro">pro</option>
-                <option value="creator">creator</option>
-              </NativeSelect>
-            ),
-          },
-          {
-            header: "Status",
-            width: "140px",
-            render: (b) => (
-              <NativeSelect
-                value={overrides.get(b.id)?.force_status ?? b.status}
-                onChange={(e) => patchOverride(b.id, { force_status: e.target.value })}
-              >
-                <option value="active">active</option>
-                <option value="beta">beta</option>
-                <option value="planned">planned</option>
-                <option value="disabled">disabled</option>
-              </NativeSelect>
-            ),
-          },
-          {
-            header: "Usage",
-            width: "100px",
-            render: (b) => {
-              const a = analytics.get(b.id);
-              return (
-                <div>
-                  <div className="text-xs font-700 text-gray-900 tabular-nums">{a?.usage_count ?? 0}</div>
-                  <div className="text-[10px] text-gray-400">{a?.unique_users ?? 0} users</div>
-                </div>
-              );
-            },
-          },
-          {
-            header: "Visible",
-            width: "100px",
-            render: (b) => {
-              const hidden = overrides.get(b.id)?.force_hidden ?? false;
-              return hidden ? (
-                <Badge tone="amber">hidden</Badge>
-              ) : (
-                <Badge tone="emerald">visible</Badge>
-              );
-            },
-          },
-          {
-            header: "",
-            width: "180px",
-            render: (b) => {
-              const ov = overrides.get(b.id);
-              const hidden = ov?.force_hidden ?? false;
-              return (
-                <div className="flex items-center gap-1.5 justify-end">
-                  <Button size="sm" variant={hidden ? "primary" : "secondary"} onClick={() => patchOverride(b.id, { force_hidden: !hidden })}>
-                    {hidden ? "Show" : "Hide"}
-                  </Button>
-                  {ov && (
-                    <Button size="sm" variant="ghost" onClick={async () => { await clearBlockOverride(b.id); toast.success("Override cleared"); void reload(); }}>
-                      Reset
-                    </Button>
-                  )}
-                </div>
-              );
-            },
-          },
+            );
+          } },
+          { header: "Visible", width: "90px", render: (b) => {
+            const hidden = overrides.get(b.id)?.force_hidden ?? false;
+            return hidden ? <Badge tone="amber">hidden</Badge> : <Badge tone="emerald">visible</Badge>;
+          } },
+          { header: "", width: "170px", align: "right", render: (b) => {
+            const ov = overrides.get(b.id);
+            const hidden = ov?.force_hidden ?? false;
+            return (
+              <div className="flex items-center gap-1.5 justify-end">
+                <Button size="sm" variant={hidden ? "primary" : "secondary"} onClick={() => setHiddenConfirm({ block: b, hide: !hidden })}>
+                  {hidden ? "Show" : "Hide"}
+                </Button>
+                {ov && <Button size="sm" variant="ghost" onClick={() => setResetConfirm(b)}>Reset</Button>}
+              </div>
+            );
+          } },
         ]}
+      />
+
+      <ConfirmDialog
+        open={!!hiddenConfirm}
+        onOpenChange={(v) => !v && setHiddenConfirm(null)}
+        title={hiddenConfirm?.hide ? `Hide "${hiddenConfirm.block.displayName}"?` : `Show "${hiddenConfirm?.block.displayName}"?`}
+        body={hiddenConfirm?.hide
+          ? "Users on all plans stop seeing this block in the builder. Existing strategies that already use it keep working."
+          : "Users on the matching plan will see this block in the builder again."}
+        destructive={hiddenConfirm?.hide ?? false}
+        onConfirm={async () => {
+          if (!hiddenConfirm) return;
+          await patchOverride(hiddenConfirm.block.id, { force_hidden: hiddenConfirm.hide });
+        }}
+      />
+
+      <ConfirmDialog
+        open={!!resetConfirm}
+        onOpenChange={(v) => !v && setResetConfirm(null)}
+        title={`Reset overrides for "${resetConfirm?.displayName}"?`}
+        body="Block falls back to its static registry defaults (plan, status, visibility). Audit log preserves the change."
+        destructive={false}
+        onConfirm={async () => {
+          if (!resetConfirm) return;
+          try { await clearBlockOverride(resetConfirm.id); toast.success("Override cleared"); void reload(); }
+          catch (err) { toast.error("Failed: " + (err as Error).message); }
+        }}
       />
     </AdminShell>
   );

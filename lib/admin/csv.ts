@@ -1,6 +1,6 @@
 // Browser-side CSV export. Works for any array-of-records.
 
-export function downloadCsv<T extends Record<string, unknown>>(
+export function downloadCsv<T>(
   filename: string,
   rows: T[],
   columns?: { key: keyof T | string; header?: string }[],
@@ -10,12 +10,12 @@ export function downloadCsv<T extends Record<string, unknown>>(
     return;
   }
   const cols: { key: keyof T | string; header?: string }[] =
-    columns ?? Object.keys(rows[0]).map((k) => ({ key: k }));
+    columns ?? Object.keys(rows[0] as unknown as Record<string, unknown>).map((k) => ({ key: k }));
   const header = cols.map((c) => csvCell(c.header ?? String(c.key))).join(",");
   const body = rows
     .map((r) =>
       cols
-        .map((c) => csvCell(r[c.key as keyof T]))
+        .map((c) => csvCell((r as unknown as Record<string, unknown>)[c.key as string]))
         .join(","),
     )
     .join("\n");

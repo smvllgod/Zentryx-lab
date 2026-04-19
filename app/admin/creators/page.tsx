@@ -6,7 +6,9 @@ import { DataTable } from "@/components/admin/DataTable";
 import { StatCard } from "@/components/admin/StatCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Download } from "lucide-react";
 import { listTopCreators, type CreatorRow } from "@/lib/admin/queries";
+import { downloadCsv } from "@/lib/admin/csv";
 
 export default function AdminCreatorsPage() {
   const [rows, setRows] = useState<CreatorRow[]>([]);
@@ -14,10 +16,8 @@ export default function AdminCreatorsPage() {
 
   async function reload() {
     setLoading(true);
-    try {
-      const r = await listTopCreators(50);
-      setRows(r);
-    } finally { setLoading(false); }
+    try { setRows(await listTopCreators(100)); }
+    finally { setLoading(false); }
   }
   useEffect(() => { void reload(); }, []);
 
@@ -28,11 +28,19 @@ export default function AdminCreatorsPage() {
   return (
     <AdminShell
       title="Creators"
-      subtitle="Top creators and their marketplace performance."
-      actions={<Button variant="secondary" size="sm" onClick={reload}>Refresh</Button>}
+      subtitle="Marketplace performance"
+      breadcrumbs={[{ label: "Admin", href: "/admin" }, { label: "Creators" }]}
+      actions={
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="secondary" onClick={() => downloadCsv("creators.csv", rows)}>
+            <Download size={12} /> CSV
+          </Button>
+          <Button size="sm" variant="secondary" onClick={reload}>Refresh</Button>
+        </div>
+      }
     >
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
-        <StatCard label="Total creators" value={rows.length} tone="purple" />
+        <StatCard label="Creators" value={rows.length} tone="purple" />
         <StatCard label="Listings" value={totalListings} />
         <StatCard label="Paid sales" value={totalSales} />
         <StatCard label="Gross revenue" value={`$${(totalRevenue / 100).toFixed(2)}`} tone="emerald" />
@@ -41,10 +49,9 @@ export default function AdminCreatorsPage() {
       <Card className="mb-4">
         <CardContent>
           <div className="flex items-start gap-3">
-            <div className="text-[11px] font-700 uppercase tracking-wider text-emerald-600 shrink-0">Payouts</div>
+            <div className="text-[10px] font-700 uppercase tracking-[0.12em] text-emerald-600 shrink-0 mt-0.5">Payouts</div>
             <p className="text-xs text-gray-500 leading-relaxed">
-              Payout-ready architecture placeholder. Plug Stripe Connect or manual payout workflow here — the per-creator <code>revenue_cents</code> above is the payable amount.
-              <br />Expected flow: (1) payout batch created monthly, (2) Stripe transfer to each creator&apos;s connected account, (3) entry written to a future <code>payouts</code> table.
+              Payout-ready architecture placeholder. Hook Stripe Connect or manual payout workflow here — <code>revenue_cents</code> per creator is the payable amount. Expected flow: (1) monthly batch, (2) Stripe transfer, (3) entry in a future <code>payouts</code> table.
             </p>
           </div>
         </CardContent>
@@ -54,29 +61,20 @@ export default function AdminCreatorsPage() {
         rows={rows}
         rowKey={(c) => c.id}
         loading={loading}
+        empty="No creators yet."
         columns={[
-          {
-            header: "Creator",
-            render: (c) => (
-              <div className="min-w-0">
-                <a href={`/admin/users/${c.id}`} className="text-sm font-600 text-gray-900 hover:text-emerald-600 truncate block">
-                  {c.full_name || c.email}
-                </a>
-                <div className="text-[10px] text-gray-400 truncate">{c.email}</div>
-              </div>
-            ),
-          },
-          { header: "Listings", width: "110px", render: (c) => <span className="text-xs font-700 text-gray-900 tabular-nums">{c.listings}</span> },
-          { header: "Paid sales", width: "110px", render: (c) => <span className="text-xs font-700 text-gray-900 tabular-nums">{c.purchases}</span> },
-          {
-            header: "Conversion",
-            width: "110px",
-            render: (c) => {
-              const conv = c.listings > 0 ? (c.purchases / c.listings) : 0;
-              return <span className="text-xs text-gray-700 tabular-nums">{c.listings === 0 ? "—" : conv.toFixed(1)}</span>;
-            },
-          },
-          { header: "Revenue", width: "110px", render: (c) => <span className="text-xs font-700 text-emerald-600 tabular-nums">${(c.revenue_cents / 100).toFixed(2)}</span> },
+          { header: "Creator", render: (c) => (
+            <div className="min-w-0">
+              <a href={`/admin/users/${c.id}`} className="text-sm font-600 text-gray-900 hover:text-emerald-600 truncate block">
+                {c.full_name || c.email}
+              </a>
+              <div className="text-[10px] text-gray-400 truncate">{c.email}</div>
+            </div>
+          ) },
+          { header: "Listings", width: "100px", align: "right", render: (c) => <span className="text-xs font-700 text-gray-900">{c.listings}</span> },
+          { header: "Paid sales", width: "100px", align: "right", render: (c) => <span className="text-xs font-700 text-gray-900">{c.purchases}</span> },
+          { header: "Conversion", width: "100px", align: "right", render: (c) => <span className="text-xs text-gray-700">{c.listings === 0 ? "—" : (c.purchases / c.listings).toFixed(1)}</span> },
+          { header: "Revenue", width: "110px", align: "right", render: (c) => <span className="text-xs font-700 text-emerald-600">${(c.revenue_cents / 100).toFixed(2)}</span> },
         ]}
       />
     </AdminShell>
