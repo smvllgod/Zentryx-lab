@@ -243,7 +243,7 @@ function SetfileRowView({
             <div className="space-y-2">
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" />
               <Textarea value={description} onChange={(e) => setDescription(e.target.value)} maxLength={240} placeholder="Optional notes (broker, risk config, session)…" className="min-h-[60px]" />
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <Input value={symbol} onChange={(e) => setSymbol(e.target.value)} placeholder="Symbol (EURUSD)" />
                 <select
                   value={timeframe}

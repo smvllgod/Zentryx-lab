@@ -197,7 +197,7 @@ export default function MyListingsPage() {
 
       {/* Create dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-[94vw] sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>New marketplace listing</DialogTitle>
             <DialogDescription>Create a draft — you&apos;ll upload images and publish in the next step.</DialogDescription>
@@ -322,7 +322,7 @@ function EditListingDialog({
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[94vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">Edit listing — {listing.title}</DialogTitle>
           <DialogDescription>Images upload and save immediately. Text fields save when you click Save.</DialogDescription>

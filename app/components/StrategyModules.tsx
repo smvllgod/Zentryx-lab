@@ -124,13 +124,14 @@ export default function StrategyModules() {
                 transition={{ duration: 0.3 }}
                 className="bg-white rounded-2xl border border-gray-100 p-6 h-full"
               >
-                {/* Badge */}
+                {/* Badge — icons always colored so they read on mobile
+                     (no hover state available on touch devices). */}
                 <div className="flex items-start justify-between mb-4">
                   <div
                     className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300"
                     style={{
-                      background: hovered === i ? mod.iconBg + "20" : "#f9fafb",
-                      color: hovered === i ? mod.iconBg : "#9ca3af",
+                      background: mod.iconBg + "20",
+                      color: mod.iconBg,
                     }}
                   >
                     <mod.Icon size={20} strokeWidth={2} />

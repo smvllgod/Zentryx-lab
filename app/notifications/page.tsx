@@ -96,17 +96,17 @@ export default function NotificationsPage() {
     <AppShell
       title="Notifications"
       actions={
-        <div className="hidden sm:flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <Button size="sm" variant={filter === "all" ? "secondary" : "ghost"} onClick={() => setFilter("all")}>All</Button>
           <Button size="sm" variant={filter === "unread" ? "secondary" : "ghost"} onClick={() => setFilter("unread")}>
             Unread {unreadCount > 0 && <span className="ml-0.5 text-[10px] text-emerald-600">· {unreadCount}</span>}
           </Button>
           {unreadCount > 0 && (
-            <Button size="sm" variant="ghost" onClick={handleMarkAll}>
+            <Button size="sm" variant="ghost" onClick={handleMarkAll} className="hidden md:inline-flex">
               <CheckCheck size={12} /> Mark all read
             </Button>
           )}
-          <Button size="sm" variant="ghost" onClick={handleClearRead}>
+          <Button size="sm" variant="ghost" onClick={handleClearRead} className="hidden md:inline-flex">
             <Trash2 size={12} /> Clear read
           </Button>
         </div>

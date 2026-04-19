@@ -640,7 +640,7 @@ export default function BuilderPage() {
 
       {/* Preview dialog — blurred for Free */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-[94vw] sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Generated MQL5 source</DialogTitle>
             <DialogDescription>

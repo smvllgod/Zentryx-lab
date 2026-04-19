@@ -129,9 +129,9 @@ export default function CreatorProfileClient() {
     <PublicShell>
       <div className="max-w-6xl mx-auto px-5 lg:px-8 py-8">
         {/* Header */}
-        <div className="rounded-2xl border border-gray-200/80 bg-gradient-to-br from-emerald-50/60 via-white to-white p-6 sm:p-8">
-          <div className="flex items-start gap-5">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+        <div className="rounded-2xl border border-gray-200/80 bg-gradient-to-br from-emerald-50/60 via-white to-white p-4 sm:p-6 md:p-8">
+          <div className="flex items-start gap-3 sm:gap-5">
+            <div className="w-16 h-16 sm:w-20 md:w-24 sm:h-20 md:h-24 rounded-xl sm:rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
               {profile.avatar_url ? (
                 <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
               ) : (
@@ -140,13 +140,13 @@ export default function CreatorProfileClient() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-700 text-gray-900">{profile.display_name}</h1>
+                <h1 className="text-lg sm:text-xl md:text-2xl font-700 text-gray-900 break-words min-w-0">{profile.display_name}</h1>
                 {stats && <TrustBadge level={stats.trust_level} size="md" />}
               </div>
               {profile.alias && profile.full_name && (
                 <div className="mt-0.5 text-xs text-gray-500">{profile.full_name}</div>
               )}
-              <div className="mt-3 flex items-center gap-3 text-[11px] text-gray-500">
+              <div className="mt-3 flex items-center gap-2 sm:gap-3 text-[11px] text-gray-500 flex-wrap">
                 <span className="inline-flex items-center gap-1"><Calendar size={11} /> Joined {formatRelative(profile.created_at)}</span>
                 <span className="inline-flex items-center gap-1"><Package size={11} /> {stats?.listing_count ?? 0} listing{(stats?.listing_count ?? 0) === 1 ? "" : "s"}</span>
                 {(stats?.reviews_received ?? 0) > 0 && (

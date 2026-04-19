@@ -146,7 +146,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
         open={state !== null}
         onOpenChange={(v) => { if (!v) close(state?.kind === "prompt" ? null : false); }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-[94vw] sm:max-w-md">
           {state && (
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2.5">

@@ -86,7 +86,7 @@ export default function SettingsPage() {
 
   return (
     <AppShell title="Settings">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
         <Card className="lg:col-span-2">
           <CardContent>
             <div className="flex items-start justify-between gap-4">

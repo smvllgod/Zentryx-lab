@@ -150,7 +150,7 @@ export function DateTimePicker({
         <Popover.Content
           align="start"
           sideOffset={6}
-          className="z-50 rounded-xl border border-gray-200 bg-white shadow-[0_8px_28px_rgba(15,23,42,0.12)] p-3 w-[300px] focus:outline-none data-[state=open]:animate-in data-[state=closed]:animate-out"
+          className="z-50 rounded-xl border border-gray-200 bg-white shadow-[0_8px_28px_rgba(15,23,42,0.12)] p-2.5 sm:p-3 w-[94vw] sm:w-[300px] max-w-[320px] focus:outline-none data-[state=open]:animate-in data-[state=closed]:animate-out"
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
           <CalendarBody

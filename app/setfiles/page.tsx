@@ -38,7 +38,7 @@ export default function SetfilesPage() {
 
   return (
     <AppShell title="Setfiles">
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] gap-4 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-3 lg:gap-4 items-start">
         {/* Personal library */}
         <SetfilesManager
           onlyPersonal

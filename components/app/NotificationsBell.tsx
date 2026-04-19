@@ -152,7 +152,7 @@ function NotificationsBellInner() {
         <Popover.Content
           align="end"
           sideOffset={6}
-          className="z-50 w-[360px] max-h-[70vh] rounded-2xl border border-gray-200 bg-white shadow-[0_8px_28px_rgba(15,23,42,0.12)] overflow-hidden flex flex-col data-[state=open]:animate-in data-[state=closed]:animate-out"
+          className="z-50 w-[94vw] sm:w-[360px] max-w-[360px] max-h-[70vh] rounded-2xl border border-gray-200 bg-white shadow-[0_8px_28px_rgba(15,23,42,0.12)] overflow-hidden flex flex-col data-[state=open]:animate-in data-[state=closed]:animate-out"
         >
           <header className="flex items-center justify-between gap-2 px-4 py-3 border-b border-gray-100">
             <div>

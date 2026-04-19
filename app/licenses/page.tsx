@@ -292,7 +292,7 @@ function IssueDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-[94vw] sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Issue a license</DialogTitle>
           <DialogDescription>
@@ -313,7 +313,7 @@ function IssueDialog({
               ))}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Buyer email (optional)">
               <Input value={buyerEmail} onChange={(e) => setBuyerEmail(e.target.value)} placeholder="alice@example.com" />
             </Field>
@@ -362,7 +362,7 @@ function RevealDialog({ revealed, onClose }: { revealed: IssueLicenseResult | nu
 
   return (
     <Dialog open={revealed !== null} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-[94vw] sm:max-w-md">
         <DialogHeader>
           <DialogTitle>License key ready</DialogTitle>
           <DialogDescription>

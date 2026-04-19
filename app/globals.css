@@ -45,6 +45,12 @@ body {
   border-radius: 3px;
 }
 
+/* Utility: hide scrollbars while keeping overflow scrollable — used for
+   horizontal action rows on mobile so the content can scroll left/right
+   without a visible track. */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
 /* Grid background pattern */
 .grid-bg {
   background-image:

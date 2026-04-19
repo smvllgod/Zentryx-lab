@@ -149,7 +149,7 @@ function ListingDetailInner() {
           <a href="/marketplace" className="hover:text-gray-700 inline-flex items-center gap-1"><ArrowLeft size={10} /> Marketplace</a>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4 lg:gap-6 items-start">
           <div className="space-y-3">
             <div className="relative aspect-[16/9] rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-emerald-50/40 border border-gray-200/80">
               <div className="absolute inset-0 grid-bg opacity-60" aria-hidden="true" />
@@ -288,7 +288,7 @@ function ListingDetailInner() {
             </div>
           </div>
 
-          <Card className="lg:sticky lg:top-20 self-start">
+          <Card className="lg:sticky lg:top-20 self-start order-first lg:order-none">
             <CardContent>
               <div className="flex items-baseline justify-between">
                 <div className="text-2xl font-700 text-gray-900">{priceLabel}</div>

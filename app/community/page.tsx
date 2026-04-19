@@ -100,7 +100,7 @@ export default function CommunityPage() {
           </Button>
         </div>
 
-        <div className="mt-8 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start">
+        <div className="mt-6 sm:mt-8 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-4 lg:gap-6 items-start">
           {/* Main: forum + feed */}
           <div className="space-y-6 min-w-0">
             {/* Forum filters */}
@@ -110,8 +110,8 @@ export default function CommunityPage() {
                   <h2 className="text-sm font-700 text-gray-900 inline-flex items-center gap-1.5">
                     <MessageCircle size={14} className="text-emerald-600" /> Forum
                   </h2>
-                  <div className="flex items-center gap-2">
-                    <NativeSelect value={category} onChange={(e) => setCategory(e.target.value)}>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <NativeSelect value={category} onChange={(e) => setCategory(e.target.value)} className="min-w-0">
                       <option value="">All categories</option>
                       {categories.map((c) => (
                         <option key={c.slug} value={c.slug}>{c.label}</option>
@@ -120,8 +120,8 @@ export default function CommunityPage() {
                     <Input
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search posts…"
-                      className="w-56"
+                      placeholder="Search…"
+                      className="flex-1 sm:w-56 sm:flex-initial"
                     />
                   </div>
                 </div>
