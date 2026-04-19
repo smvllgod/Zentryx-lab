@@ -211,6 +211,8 @@ export default function CommunityPage() {
 
 function PostPreview({ post, categories }: { post: PostWithAuthor; categories: ForumCategory[] }) {
   const cat = categories.find((c) => c.slug === post.category_slug);
+  const imgs = (post as unknown as { image_urls?: string[] | null }).image_urls ?? [];
+  const hasImages = Array.isArray(imgs) && imgs.length > 0;
   return (
     <li className="py-3.5">
       <a href={`/community/posts/${post.id}`} className="group flex items-start gap-3">
@@ -228,6 +230,20 @@ function PostPreview({ post, categories }: { post: PostWithAuthor; categories: F
             <h3 className="text-sm font-700 text-gray-900 truncate group-hover:text-emerald-700">{post.title}</h3>
           </div>
           <p className="mt-1 text-[12px] text-gray-500 line-clamp-2 leading-snug">{post.body}</p>
+          {hasImages && (
+            <div className="mt-2 flex gap-1.5">
+              {imgs.slice(0, 4).map((u, i) => (
+                <div key={u} className="w-14 h-14 rounded-md overflow-hidden bg-gray-100 border border-gray-200 relative">
+                  <img src={u} alt="" className="w-full h-full object-cover" />
+                  {i === 3 && imgs.length > 4 && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-[10px] font-700 text-white">
+                      +{imgs.length - 4}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
           <div className="mt-1.5 flex items-center gap-3 text-[10px] text-gray-400">
             <span>by {post.author?.display_name ?? "Anonymous"}</span>
             <span>·</span>

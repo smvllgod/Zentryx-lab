@@ -156,6 +156,21 @@ export default function PostDetailClient() {
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.body}</ReactMarkdown>
           </div>
 
+          {/* Image gallery */}
+          {(() => {
+            const imgs = (post as unknown as { image_urls?: string[] | null }).image_urls ?? [];
+            if (!Array.isArray(imgs) || imgs.length === 0) return null;
+            return (
+              <div className="mt-5 grid grid-cols-2 md:grid-cols-3 gap-2.5">
+                {imgs.map((u) => (
+                  <a key={u} href={u} target="_blank" rel="noopener noreferrer" className="relative group block rounded-lg overflow-hidden bg-gray-100 border border-gray-200 aspect-video">
+                    <img src={u} alt="" className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-[1.02]" />
+                  </a>
+                ))}
+              </div>
+            );
+          })()}
+
           {isAuthor && post.status === "pending" && (
             <div className="mt-6 flex items-center gap-2">
               <Button size="sm" variant="ghost" onClick={async () => {

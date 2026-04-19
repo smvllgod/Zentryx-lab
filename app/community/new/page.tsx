@@ -8,7 +8,7 @@
 // post is awaiting moderation.
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Clock, Info, Send, Sparkles } from "lucide-react";
+import { ArrowLeft, Clock, Info, Send, Sparkles, ImagePlus, X, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { PublicShell } from "@/components/app/public-shell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,7 +19,10 @@ import { NativeSelect } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth/context";
-import { createPost, listCategories, listMyPosts, type ForumCategory, type ForumPost } from "@/lib/forum/client";
+import {
+  createPost, listCategories, listMyPosts, uploadForumImage, deleteForumImage,
+  type ForumCategory, type ForumPost,
+} from "@/lib/forum/client";
 import { formatRelative } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 
@@ -33,6 +36,9 @@ export default function NewPostPage() {
   const [body, setBody] = useState("");
   const [saving, setSaving] = useState(false);
   const [mine, setMine] = useState<ForumPost[]>([]);
+  const [images, setImages] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const MAX_IMAGES = 6;
 
   useEffect(() => {
     if (ready && !user) router.replace("/sign-in?returnTo=/community/new");
@@ -61,7 +67,7 @@ export default function NewPostPage() {
     if (!categorySlug) { toast.error("Pick a category."); return; }
     setSaving(true);
     try {
-      await createPost({ categorySlug, title: title.trim(), body: body.trim() });
+      await createPost({ categorySlug, title: title.trim(), body: body.trim(), imageUrls: images });
       toast.success("Post submitted — awaiting moderation.");
       router.push("/community");
     } catch (err) {
@@ -69,6 +75,40 @@ export default function NewPostPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleImages(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    const remaining = MAX_IMAGES - images.length;
+    if (remaining <= 0) { toast.error(`Up to ${MAX_IMAGES} images per post.`); return; }
+    const batch = files.slice(0, remaining);
+    setUploading(true);
+    try {
+      const urls: string[] = [];
+      for (const f of batch) {
+        try {
+          const url = await uploadForumImage(f);
+          urls.push(url);
+        } catch (err) {
+          toast.error(`${f.name}: ${(err as Error).message}`);
+        }
+      }
+      if (urls.length > 0) {
+        setImages((prev) => [...prev, ...urls]);
+        toast.success(`${urls.length} image${urls.length === 1 ? "" : "s"} uploaded.`);
+      }
+    } finally {
+      setUploading(false);
+      // Reset input so the same file can be picked again if removed.
+      e.target.value = "";
+    }
+  }
+
+  async function removeImage(url: string) {
+    setImages((prev) => prev.filter((u) => u !== url));
+    // Best-effort cleanup of the storage object.
+    void deleteForumImage(url).catch(() => undefined);
   }
 
   const pending = useMemo(() => mine.filter((p) => p.status === "pending"), [mine]);
@@ -116,6 +156,44 @@ export default function NewPostPage() {
                   className="min-h-[220px] font-mono text-[13px]"
                   placeholder={`What you're trying to do, what you've tried, backtest / tick screenshots etc.\n\nFormatting: **bold**, *italic*, \`code\`, tables, links.`}
                 />
+              </div>
+
+              {/* Image uploader — up to 6 images, 5 MB each. */}
+              <div>
+                <Label>Images (optional, up to {MAX_IMAGES})</Label>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {images.map((url) => (
+                    <div key={url} className="relative group w-24 h-24 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                      <img src={url} alt="" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(url)}
+                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label="Remove image"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                  {images.length < MAX_IMAGES && (
+                    <label className={cn(
+                      "w-24 h-24 rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-1 cursor-pointer text-gray-400 text-[10px] font-600",
+                      uploading ? "border-emerald-300 bg-emerald-50/40" : "border-gray-300 hover:border-gray-400 hover:bg-gray-50",
+                    )}>
+                      {uploading ? <Loader2 size={16} className="animate-spin text-emerald-500" /> : <ImagePlus size={18} />}
+                      <span>{uploading ? "Uploading" : "Add image"}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={handleImages}
+                        disabled={uploading}
+                      />
+                    </label>
+                  )}
+                </div>
+                <p className="mt-1.5 text-[11px] text-gray-500">PNG, JPG, WEBP. Max 5 MB each. They appear inline in your post.</p>
               </div>
 
               <div className="flex items-start gap-2 rounded-xl border border-amber-200/80 bg-amber-50/40 p-3 text-[11px] text-amber-800 leading-snug">

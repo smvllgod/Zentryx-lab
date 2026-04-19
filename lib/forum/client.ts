@@ -104,6 +104,7 @@ export async function createPost(input: {
   categorySlug: string;
   title: string;
   body: string;
+  imageUrls?: string[];
 }): Promise<ForumPost> {
   const s = db();
   const { data: { user } } = await s.auth.getUser();
@@ -115,6 +116,7 @@ export async function createPost(input: {
       category_slug: input.categorySlug,
       title: input.title.trim(),
       body: input.body,
+      image_urls: input.imageUrls ?? [],
     })
     .select("*")
     .single();
@@ -122,7 +124,39 @@ export async function createPost(input: {
   return data as ForumPost;
 }
 
-export async function updateMyPost(id: string, patch: { title?: string; body?: string; category_slug?: string }): Promise<void> {
+/**
+ * Uploads one image to the `forum-images` bucket, scoped to the current
+ * user's own prefix so RLS passes. Returns the public URL.
+ */
+export async function uploadForumImage(file: File): Promise<string> {
+  const s = db();
+  const { data: { user } } = await s.auth.getUser();
+  if (!user) throw new Error("Not signed in");
+
+  if (!file.type.startsWith("image/")) throw new Error("Not an image");
+  if (file.size > 5 * 1024 * 1024) throw new Error("Image exceeds 5 MB");
+
+  const ext = file.name.match(/\.([a-zA-Z0-9]+)$/)?.[1] ?? "png";
+  const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext.toLowerCase()}`;
+
+  const { error: uploadErr } = await s.storage
+    .from("forum-images")
+    .upload(path, file, { cacheControl: "31536000", upsert: false, contentType: file.type });
+  if (uploadErr) throw uploadErr;
+
+  const { data } = s.storage.from("forum-images").getPublicUrl(path);
+  return data.publicUrl;
+}
+
+export async function deleteForumImage(publicUrl: string): Promise<void> {
+  const s = db();
+  // Parse the storage path out of the public URL (last two segments = uid/file).
+  const m = publicUrl.match(/\/forum-images\/(.+)$/);
+  if (!m) return;
+  await s.storage.from("forum-images").remove([m[1]]);
+}
+
+export async function updateMyPost(id: string, patch: { title?: string; body?: string; category_slug?: string; image_urls?: string[] }): Promise<void> {
   const { error } = await db().from("forum_posts").update(patch).eq("id", id);
   if (error) throw error;
 }
