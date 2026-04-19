@@ -294,7 +294,7 @@ export function AiPanel({ graph, onGraphReplace, strategyId, onHighlightNode }: 
                   <div className="text-[10px] text-gray-400 truncate">
                     {view === "history"
                       ? `${conversations.length} chat${conversations.length === 1 ? "" : "s"}`
-                      : conversationId ? "Saved · resumes on reload" : "New chat — not saved yet"}
+                      : "Strategy assistant"}
                   </div>
                 </div>
               </div>
@@ -391,8 +391,8 @@ export function AiPanel({ graph, onGraphReplace, strategyId, onHighlightNode }: 
                     )}
                   </form>
                   <div className="mt-2 flex items-center justify-between text-[10px] text-gray-400">
-                    <span>Claude Sonnet 4.6 · Zentryx-tuned</span>
-                    <span>Enter to send · Shift+Enter = newline</span>
+                    <span>Powered by Zentryx AI</span>
+                    <span>Enter to send · Shift+Enter for newline</span>
                   </div>
                 </footer>
               </>
@@ -553,13 +553,11 @@ function Welcome({ onPick }: { onPick: (q: string) => void }) {
     <div>
       <div className="rounded-xl bg-gradient-to-br from-emerald-50 via-emerald-50/40 to-white border border-emerald-100 p-4">
         <div className="flex items-center gap-2 text-xs font-700 text-emerald-700">
-          <Zap size={12} /> What can I do?
+          <Zap size={12} /> Your strategy assistant
         </div>
         <p className="mt-1.5 text-[12px] text-emerald-900/80 leading-relaxed">
-          I can read your graph, add or reconfigure nodes, fix validation
-          errors, and explain the MQL5 output. Every change shows up live on
-          your canvas. Conversations are saved — open them later from the
-          history button.
+          Describe what you want and I&apos;ll build it on your canvas — adding
+          nodes, wiring connections, and tuning parameters as you watch.
         </p>
       </div>
       <div className="mt-3 space-y-1.5">

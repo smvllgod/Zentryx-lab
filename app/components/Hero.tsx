@@ -1,12 +1,49 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
-import { motion, useScroll, useTransform, useMotionValue, useSpring } from "framer-motion";
-import { ArrowRight, Play, Check, ShieldCheck, Zap, Star, Plus, Move, RotateCcw, Settings, TrendingUp, AlertTriangle, Grid2x2, ArrowUpRight, ArrowDownRight, Newspaper } from "lucide-react";
+import { useRef } from "react";
+import {
+  motion,
+  useScroll,
+  useTransform,
+  useMotionValue,
+  useSpring,
+} from "framer-motion";
+import {
+  ArrowRight,
+  Play,
+  Check,
+  ShieldCheck,
+  Zap,
+  Star,
+  Sparkles,
+  Save,
+  Undo2,
+  Redo2,
+  Maximize,
+  Maximize2,
+  Code2,
+  Download,
+  Search,
+  PanelLeftClose,
+  PanelRightClose,
+  Trash2,
+  Copy,
+  CheckCircle2,
+  AlertTriangle,
+} from "lucide-react";
 
-const words = ["Build", "Your", "Own", "Trading", "Robot", "Without", "Writing", "Code"];
-
-function MagneticButton({ children, className, href }: { children: React.ReactNode; className: string; href: string }) {
+// ──────────────────────────────────────────────────────────────────
+// Magnetic CTA — pulled toward cursor for a tactile "premium" feel.
+// ──────────────────────────────────────────────────────────────────
+function MagneticButton({
+  children,
+  className,
+  href,
+}: {
+  children: React.ReactNode;
+  className: string;
+  href: string;
+}) {
   const ref = useRef<HTMLAnchorElement>(null);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
@@ -21,7 +58,10 @@ function MagneticButton({ children, className, href }: { children: React.ReactNo
     x.set((e.clientX - cx) * 0.25);
     y.set((e.clientY - cy) * 0.25);
   };
-  const handleMouseLeave = () => { x.set(0); y.set(0); };
+  const handleMouseLeave = () => {
+    x.set(0);
+    y.set(0);
+  };
 
   return (
     <motion.a
@@ -37,207 +77,455 @@ function MagneticButton({ children, className, href }: { children: React.ReactNo
   );
 }
 
+// ──────────────────────────────────────────────────────────────────
+// BuilderMockup — pixel-faithful preview of the real builder UI.
+// Same chrome (topbar + collapsible sidebars + metadata bar +
+// in-canvas toolbar), same emerald-handle nodes, same diagnostics
+// panel, same floating "Ask AI" button.
+// ──────────────────────────────────────────────────────────────────
 function BuilderMockup() {
-  const [activeStep, setActiveStep] = useState(0);
-  const [dotPos, setDotPos] = useState({ x: 0, y: 0 });
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveStep(s => (s + 1) % 3);
-    }, 2000);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    let progress = 0;
-    const anim = setInterval(() => {
-      progress = (progress + 0.01) % 1;
-      // Animate dot along path from entry to risk
-      setDotPos({
-        x: 80 + progress * 120,
-        y: 60 + Math.sin(progress * Math.PI) * 20,
-      });
-    }, 16);
-    return () => clearInterval(anim);
-  }, []);
-
-  const nodes = [
-    { id: "entry", label: "Entry Logic", x: 40, y: 50, color: "#10b981", Icon: ArrowUpRight },
-    { id: "risk", label: "Risk Engine", x: 200, y: 50, color: "#6366f1", Icon: Zap },
-    { id: "exit", label: "Exit Logic", x: 360, y: 50, color: "#f59e0b", Icon: ArrowDownRight },
-    { id: "filter", label: "News Filter", x: 120, y: 170, color: "#ef4444", Icon: Newspaper },
-    { id: "grid", label: "Grid System", x: 280, y: 170, color: "#3b82f6", Icon: Grid2x2 },
-  ];
-
-  const connections = [
-    { x1: 110, y1: 65, x2: 200, y2: 65 },
-    { x1: 270, y1: 65, x2: 360, y2: 65 },
-    { x1: 120, y1: 80, x2: 120, y2: 170 },
-    { x1: 200, y1: 80, x2: 200, y2: 170 },
-  ];
-
   return (
-    <div className="relative w-full bg-white rounded-2xl border border-gray-200 shadow-2xl shadow-gray-200/80 overflow-hidden">
-      {/* Top bar */}
-      <div className="flex items-center gap-2 px-4 h-10 border-b border-gray-100 bg-gray-50/80">
-        <div className="w-3 h-3 rounded-full bg-red-400" />
-        <div className="w-3 h-3 rounded-full bg-yellow-400" />
-        <div className="w-3 h-3 rounded-full bg-green-400" />
-        <span className="ml-3 text-xs font-500 text-gray-400">Zentryx Lab — Strategy Builder</span>
+    <div className="relative w-full bg-white rounded-2xl border border-gray-200 shadow-2xl shadow-gray-300/40 overflow-hidden">
+      {/* ── Window chrome ───────────────────────────────────────── */}
+      <div className="flex items-center gap-2 px-4 h-9 border-b border-gray-100 bg-gray-50/80 shrink-0">
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
+          <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+        </div>
+        <span className="ml-2 text-[10px] font-600 text-gray-400 truncate">
+          lab.zentryx.tech / builder
+        </span>
         <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs px-2 py-0.5 rounded bg-emerald-50 text-emerald-600 font-600 border border-emerald-100">● Live</span>
+          <span className="text-[9px] font-700 uppercase tracking-widest text-purple-600 bg-purple-50 border border-purple-100 rounded px-1.5 py-0.5">
+            Creator
+          </span>
         </div>
       </div>
 
-      <div className="flex h-[420px]">
-        {/* Left toolbar */}
-        <div className="w-12 border-r border-gray-100 bg-gray-50 flex flex-col items-center py-4 gap-4">
-          {([Plus, Move, RotateCcw, Settings] as const).map((Icon, i) => (
-            <button key={i} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${i === 0 ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30" : "text-gray-400 hover:bg-gray-200"}`}>
-              <Icon size={14} />
-            </button>
-          ))}
-        </div>
-
-        {/* Canvas */}
-        <div className="flex-1 relative bg-white overflow-hidden">
-          {/* Grid lines */}
-          <svg className="absolute inset-0 w-full h-full" style={{ opacity: 0.4 }}>
-            <defs>
-              <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
-                <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#e5e7eb" strokeWidth="0.5" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#grid)" />
-          </svg>
-
-          {/* Connection lines */}
-          <svg className="absolute inset-0 w-full h-full pointer-events-none">
-            {connections.map((c, i) => (
-              <g key={i}>
-                <line x1={c.x1} y1={c.y1} x2={c.x2} y2={c.y2} stroke="#e5e7eb" strokeWidth="2" />
-                <line
-                  x1={c.x1} y1={c.y1} x2={c.x2} y2={c.y2}
-                  stroke="#10b981"
-                  strokeWidth="2"
-                  strokeDasharray="60"
-                  strokeDashoffset="0"
-                  opacity="0.6"
-                  style={{
-                    animation: `dataFlow ${1.5 + i * 0.3}s linear infinite`,
-                  }}
-                />
-              </g>
-            ))}
-            {/* Animated dot */}
-            <circle cx={dotPos.x} cy={dotPos.y + 50} r="4" fill="#10b981" opacity="0.8" />
-          </svg>
-
-          {/* Nodes */}
-          {nodes.map((node, i) => (
-            <motion.div
-              key={node.id}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: i * 0.1 + 0.3 }}
-              style={{ left: node.x, top: node.y }}
-              className={`absolute cursor-pointer group`}
-            >
-              <div
-                className={`w-[110px] rounded-xl border-2 bg-white shadow-lg p-3 transition-all duration-200 group-hover:shadow-xl group-hover:-translate-y-0.5`}
-                style={{ borderColor: node.color + "40" }}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <span
-                    className="w-6 h-6 rounded-lg flex items-center justify-center"
-                    style={{ background: node.color + "15", color: node.color }}
-                  >
-                    <node.Icon size={12} strokeWidth={2.5} />
-                  </span>
-                  <span className="text-[10px] font-700 text-gray-700 leading-none">{node.label}</span>
-                </div>
-                <div className="flex gap-1 mt-1">
-                  {[...Array(3)].map((_, j) => (
-                    <div key={j} className="flex-1 h-1 rounded-full" style={{ background: j < 2 ? node.color : "#e5e7eb" }} />
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Right panel */}
-        <div className="w-56 border-l border-gray-100 bg-gray-50/60 p-4 flex flex-col gap-4">
-          <div>
-            <p className="text-[10px] font-700 uppercase tracking-wider text-gray-400 mb-2">Export</p>
-            <div className="space-y-2">
-              {["MT4 (.ex4)", "MT5 (.ex5)"].map((fmt, i) => (
-                <div key={i} className={`flex items-center gap-2 p-2 rounded-lg border text-xs font-500 cursor-pointer transition-all ${i === 1 ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-gray-200 bg-white text-gray-600"}`}>
-                  <div className={`w-3 h-3 rounded-full border-2 flex items-center justify-center ${i === 1 ? "border-emerald-500" : "border-gray-300"}`}>
-                    {i === 1 && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
-                  </div>
-                  {fmt}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <p className="text-[10px] font-700 uppercase tracking-wider text-gray-400 mb-2">Risk Settings</p>
-            <div className="space-y-2">
-              <div className="bg-white border border-gray-200 rounded-lg p-2">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-[9px] text-gray-500">Max DD</span>
-                  <span className="text-[9px] font-700 text-gray-700">5%</span>
-                </div>
-                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-400 rounded-full" style={{ width: "50%" }} />
-                </div>
-              </div>
-              <div className="bg-white border border-gray-200 rounded-lg p-2">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-[9px] text-gray-500">Lot Size</span>
-                  <span className="text-[9px] font-700 text-gray-700">0.01</span>
-                </div>
-                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-400 rounded-full" style={{ width: "20%" }} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Sparkline */}
-          <div className="bg-white border border-gray-200 rounded-lg p-3">
-            <p className="text-[9px] font-700 text-gray-400 uppercase tracking-wide mb-2">Equity Curve</p>
-            <svg viewBox="0 0 100 40" className="w-full" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.2" />
-                  <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <path d="M0,35 L10,30 L20,28 L30,25 L40,22 L50,20 L55,23 L60,18 L70,12 L80,8 L90,5 L100,3" fill="none" stroke="#10b981" strokeWidth="1.5" />
-              <path d="M0,35 L10,30 L20,28 L30,25 L40,22 L50,20 L55,23 L60,18 L70,12 L80,8 L90,5 L100,3 L100,40 L0,40Z" fill="url(#sparkGrad)" />
+      {/* ── App topbar ──────────────────────────────────────────── */}
+      <div className="flex items-center gap-2 h-11 px-3 border-b border-gray-100 bg-white">
+        <div className="flex items-center gap-1.5">
+          <div className="w-6 h-6 rounded-md bg-emerald-500 flex items-center justify-center shadow shadow-emerald-500/30">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+              <path d="M8 2L14 5V11L8 14L2 11V5L8 2Z" fill="white" fillOpacity="0.9" />
+              <path d="M8 5L11 6.5V9.5L8 11L5 9.5V6.5L8 5Z" fill="white" />
             </svg>
-            <div className="flex justify-between mt-1">
-              <span className="text-[8px] text-gray-400">30 days</span>
-              <span className="text-[8px] font-700 text-emerald-500">+18.4%</span>
+          </div>
+          <span className="text-xs font-700 text-gray-900">EUR/USD Trend Hunter</span>
+        </div>
+        <div className="flex-1" />
+        <ToolbarBtn icon={<Undo2 size={11} />} label="Undo" />
+        <ToolbarBtn icon={<Redo2 size={11} />} label="Redo" />
+        <span className="mx-0.5 h-4 w-px bg-gray-200" />
+        <ToolbarBtn icon={<Play size={11} />} label="Validate" tone="secondary" />
+        <ToolbarBtn icon={<Code2 size={11} />} label="Preview" tone="secondary" />
+        <ToolbarBtn icon={<Download size={11} />} label="Export" tone="secondary" />
+        <ToolbarBtn icon={<Save size={11} />} label="Save" tone="primary" />
+      </div>
+
+      {/* ── Body ─────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-[150px_1fr_180px] h-[440px] bg-gray-50/40">
+        {/* Node library */}
+        <div className="border-r border-gray-100 bg-white flex flex-col min-h-0">
+          <div className="flex items-center justify-between px-2 py-1.5 border-b border-gray-100">
+            <span className="text-[8px] font-700 uppercase tracking-widest text-gray-400">
+              Nodes
+            </span>
+            <PanelLeftClose size={11} className="text-gray-300" />
+          </div>
+          <div className="px-2 py-1.5">
+            <div className="relative">
+              <Search size={9} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-300" />
+              <div className="h-5 rounded-md border border-gray-200 bg-gray-50 pl-5 text-[9px] text-gray-300 flex items-center">
+                Search…
+              </div>
+            </div>
+          </div>
+          <div className="flex-1 overflow-hidden px-1.5 space-y-2 pb-2">
+            <CategoryRow color="#10b981" label="Entry" count={9} active />
+            <LibraryItem label="EMA Cross" desc="Fast / slow crossover" highlighted />
+            <LibraryItem label="MACD Cross" desc="Momentum trigger" />
+            <LibraryItem label="Stochastic" desc="K/D crossover" />
+            <CategoryRow color="#0ea5e9" label="Filter" count={11} />
+            <LibraryItem label="RSI Filter" desc="Block extremes" highlighted />
+            <LibraryItem label="ATR Filter" desc="Volatility band" />
+            <CategoryRow color="#f59e0b" label="Risk" count={6} />
+            <LibraryItem label="Risk %" desc="1% per trade" highlighted />
+            <CategoryRow color="#ef4444" label="Exit" count={8} />
+            <LibraryItem label="Fixed TP/SL" desc="Pip-based" highlighted />
+          </div>
+        </div>
+
+        {/* Center column */}
+        <div className="flex flex-col min-h-0">
+          {/* Metadata bar */}
+          <div className="grid grid-cols-4 gap-1.5 px-3 py-1.5 border-b border-gray-100 bg-white">
+            <MetaField label="Name" value="EUR/USD Trend Hunter" />
+            <MetaField label="Symbol" value="EURUSD" mono />
+            <MetaField label="Timeframe" value="M15" mono />
+            <MetaField label="Magic #" value="20260418" mono />
+          </div>
+
+          {/* In-canvas toolbar */}
+          <div className="flex items-center gap-1 px-3 py-1 border-b border-gray-100 bg-white">
+            <ToolbarBtn icon={<Maximize size={9} />} label="Fit" mini />
+            <ToolbarBtn icon={<Maximize2 size={9} />} label="Fullscreen" mini />
+            <div className="flex-1" />
+            <span className="text-[9px] text-emerald-600 font-600 inline-flex items-center gap-1">
+              <CheckCircle2 size={9} /> Validated
+            </span>
+          </div>
+
+          {/* Canvas */}
+          <div className="flex-1 relative bg-gray-50/40 overflow-hidden">
+            {/* Dot grid */}
+            <svg className="absolute inset-0 w-full h-full opacity-50">
+              <defs>
+                <pattern id="hero-dots" width="14" height="14" patternUnits="userSpaceOnUse">
+                  <circle cx="0.7" cy="0.7" r="0.7" fill="#d1d5db" />
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#hero-dots)" />
+            </svg>
+
+            {/* Nodes + edges */}
+            <CanvasNodes />
+
+            {/* Mini-map (bottom-right) */}
+            <div className="absolute bottom-2 right-2 w-20 h-12 bg-white/85 backdrop-blur border border-gray-200 rounded-md p-1 flex items-center gap-0.5">
+              <div className="w-2.5 h-1 rounded-sm bg-emerald-400" />
+              <div className="w-2.5 h-1 rounded-sm bg-sky-400" />
+              <div className="w-2.5 h-1 rounded-sm bg-amber-400" />
+              <div className="w-2.5 h-1 rounded-sm bg-red-400" />
+            </div>
+
+            {/* Zoom controls (bottom-left) */}
+            <div className="absolute bottom-2 left-2 bg-white border border-gray-200 rounded-md shadow-sm divide-y divide-gray-100 text-[10px] font-700 text-gray-400">
+              <div className="px-1.5 py-0.5">+</div>
+              <div className="px-1.5 py-0.5">−</div>
             </div>
           </div>
 
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.97 }}
-            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-700 py-2.5 rounded-xl shadow-lg shadow-emerald-500/30 transition-colors"
-          >
-            Export to MT5 →
-          </motion.button>
+          {/* Strategy summary */}
+          <div className="border-t border-gray-100 bg-white px-3 py-2">
+            <div className="flex items-start gap-1.5">
+              <CheckCircle2 size={10} className="text-emerald-500 mt-0.5 shrink-0" />
+              <div className="min-w-0">
+                <div className="text-[9px] font-700 uppercase tracking-widest text-gray-400">
+                  Strategy summary
+                </div>
+                <p className="text-[10.5px] text-gray-700 leading-snug mt-0.5 truncate">
+                  EURUSD M15: Trade when EMA 20 crosses above EMA 50, RSI(14) within band, risk 1%, TP 30 / SL 15 pips.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
+
+        {/* Inspector */}
+        <div className="border-l border-gray-100 bg-white flex flex-col min-h-0">
+          <div className="flex items-center justify-between px-2 py-1.5 border-b border-gray-100">
+            <PanelRightClose size={11} className="text-gray-300" />
+            <span className="text-[8px] font-700 uppercase tracking-widest text-gray-400">
+              Inspector
+            </span>
+          </div>
+          <div className="px-2.5 py-2">
+            <div className="text-[8px] font-700 uppercase tracking-widest text-gray-400">Entry</div>
+            <div className="flex items-center gap-1 mt-0.5">
+              <h4 className="text-[11px] font-700 text-gray-900">EMA Cross</h4>
+              <div className="ml-auto flex items-center gap-0.5 text-gray-300">
+                <Copy size={9} />
+                <Trash2 size={9} />
+              </div>
+            </div>
+            <p className="text-[9px] text-gray-400 mt-0.5 leading-tight">
+              Fast / slow EMA crossover.
+            </p>
+          </div>
+          <div className="flex-1 px-2.5 space-y-2.5 overflow-hidden">
+            <Field label="Fast EMA" value="20" />
+            <Field label="Slow EMA" value="50" />
+            <FieldSelect label="Direction" value="Both" />
+            <Field label="Lookback" value="2 bars" />
+          </div>
+          <div className="border-t border-gray-100 px-2.5 py-1.5">
+            <div className="text-[8px] font-700 uppercase tracking-widest text-amber-600 flex items-center gap-1">
+              <AlertTriangle size={9} /> 1 warning
+            </div>
+            <p className="text-[9px] text-gray-500 mt-0.5 leading-tight">
+              No spread filter — consider adding one.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Floating "Ask AI" pill */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.2, duration: 0.5 }}
+        className="absolute bottom-4 right-4"
+      >
+        <motion.div
+          animate={{ scale: [1, 1.04, 1], boxShadow: ["0 8px 22px rgba(16,185,129,0.35)", "0 12px 30px rgba(16,185,129,0.55)", "0 8px 22px rgba(16,185,129,0.35)"] }}
+          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 text-white text-[11px] font-700"
+        >
+          <Sparkles size={11} />
+          Ask AI
+          <kbd className="text-[8px] font-700 text-emerald-100 border border-emerald-300/40 rounded px-1">⌘K</kbd>
+        </motion.div>
+      </motion.div>
+    </div>
+  );
+}
+
+function ToolbarBtn({
+  icon,
+  label,
+  tone = "ghost",
+  mini,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  tone?: "ghost" | "secondary" | "primary";
+  mini?: boolean;
+}) {
+  const cls =
+    tone === "primary"
+      ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/25"
+      : tone === "secondary"
+        ? "bg-white border border-gray-200 text-gray-700"
+        : "text-gray-500";
+  return (
+    <div
+      className={`inline-flex items-center gap-1 ${mini ? "h-5 px-1.5" : "h-6 px-2"} rounded-md text-[10px] font-600 ${cls}`}
+    >
+      {icon}
+      {label}
+    </div>
+  );
+}
+
+function MetaField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div>
+      <div className="text-[8px] font-700 uppercase tracking-widest text-gray-400">{label}</div>
+      <div
+        className={`mt-0.5 h-5 rounded border border-gray-200 px-1.5 text-[9px] flex items-center text-gray-700 truncate ${mono ? "font-mono" : ""}`}
+      >
+        {value}
       </div>
     </div>
   );
 }
 
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[8px] font-700 text-gray-500">{label}</div>
+      <div className="mt-0.5 h-5 rounded border border-gray-200 px-1.5 text-[9px] flex items-center font-mono text-gray-700">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function FieldSelect({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[8px] font-700 text-gray-500">{label}</div>
+      <div className="mt-0.5 h-5 rounded border border-gray-200 px-1.5 text-[9px] flex items-center justify-between text-gray-700">
+        {value}
+        <span className="text-gray-300">▾</span>
+      </div>
+    </div>
+  );
+}
+
+function CategoryRow({
+  color,
+  label,
+  count,
+  active,
+}: {
+  color: string;
+  label: string;
+  count: number;
+  active?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-1 px-1 pt-1.5">
+      <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: color }} />
+      <span
+        className={`text-[8px] font-700 uppercase tracking-widest ${
+          active ? "text-gray-700" : "text-gray-400"
+        }`}
+      >
+        {label}
+      </span>
+      <span className="text-[8px] text-gray-300 ml-auto">{count}</span>
+    </div>
+  );
+}
+
+function LibraryItem({
+  label,
+  desc,
+  highlighted,
+}: {
+  label: string;
+  desc: string;
+  highlighted?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-md border ${
+        highlighted ? "border-emerald-200 bg-emerald-50/40" : "border-transparent"
+      } px-1.5 py-1`}
+    >
+      <div className="text-[10px] font-700 text-gray-800 leading-tight truncate">{label}</div>
+      <div className="text-[8px] text-gray-400 leading-tight truncate">{desc}</div>
+    </div>
+  );
+}
+
+// ── Canvas with strategy graph (animated emerald edges) ────────
+function CanvasNodes() {
+  return (
+    <>
+      {/* Edges (SVG) */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="edge-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#10b981" stopOpacity="0.9" />
+            <stop offset="100%" stopColor="#10b981" stopOpacity="0.3" />
+          </linearGradient>
+          <filter id="edge-glow">
+            <feGaussianBlur stdDeviation="1.2" />
+          </filter>
+        </defs>
+        {/* Entry → Filter */}
+        <Edge x1={92} y1={68} x2={195} y2={68} delay={0} />
+        {/* Filter → Risk */}
+        <Edge x1={285} y1={68} x2={388} y2={68} delay={0.6} />
+        {/* Risk → Exit */}
+        <Edge x1={478} y1={68} x2={580} y2={68} delay={1.2} />
+      </svg>
+
+      {/* Nodes */}
+      <Node x={8} y={36} category="ENTRY" color="#10b981" label="EMA Cross" sub="20 / 50" />
+      <Node x={198} y={36} category="FILTER" color="#0ea5e9" label="RSI Filter" sub="14, band" selected />
+      <Node x={388} y={36} category="RISK" color="#f59e0b" label="Risk %" sub="1.0%" />
+      <Node x={578} y={36} category="EXIT" color="#ef4444" label="Fixed TP/SL" sub="30 / 15 pips" />
+    </>
+  );
+}
+
+function Edge({ x1, y1, x2, y2, delay }: { x1: number; y1: number; x2: number; y2: number; delay: number }) {
+  const midX = (x1 + x2) / 2;
+  return (
+    <g>
+      {/* Static path */}
+      <path
+        d={`M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`}
+        stroke="#10b981"
+        strokeOpacity="0.45"
+        strokeWidth="1.4"
+        fill="none"
+      />
+      {/* Animated dashed overlay */}
+      <path
+        d={`M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`}
+        stroke="url(#edge-grad)"
+        strokeWidth="1.6"
+        strokeDasharray="4 4"
+        fill="none"
+        style={{
+          animation: `dataFlow 1.6s linear infinite`,
+          animationDelay: `${delay}s`,
+        }}
+      />
+      {/* Traveling dot */}
+      <motion.circle
+        r="2.4"
+        fill="#10b981"
+        initial={{ opacity: 0 }}
+        animate={{
+          opacity: [0, 1, 0],
+        }}
+        transition={{
+          duration: 1.6,
+          delay,
+          repeat: Infinity,
+          ease: "linear",
+        }}
+      >
+        <animateMotion
+          path={`M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`}
+          dur="1.6s"
+          begin={`${delay}s`}
+          repeatCount="indefinite"
+        />
+      </motion.circle>
+    </g>
+  );
+}
+
+function Node({
+  x,
+  y,
+  category,
+  color,
+  label,
+  sub,
+  selected,
+}: {
+  x: number;
+  y: number;
+  category: string;
+  color: string;
+  label: string;
+  sub: string;
+  selected?: boolean;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.85, y: 6 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ delay: 0.4 + (x / 700) * 0.4, type: "spring", stiffness: 280, damping: 22 }}
+      className={`absolute w-[88px] rounded-lg border bg-white shadow-sm ${
+        selected ? "border-emerald-400 ring-2 ring-emerald-200" : "border-gray-200"
+      }`}
+      style={{ left: x, top: y }}
+    >
+      {/* Target handle (left) */}
+      <span
+        className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border border-white"
+        style={{ background: color }}
+      />
+      <div
+        className="rounded-t-lg px-1.5 py-0.5 text-[8px] font-700 uppercase tracking-widest"
+        style={{ background: `${color}1a`, color }}
+      >
+        {category}
+      </div>
+      <div className="px-1.5 py-1">
+        <div className="text-[10px] font-700 text-gray-900 truncate">{label}</div>
+        <div className="text-[8px] text-gray-400 truncate">{sub}</div>
+      </div>
+      {/* Source handle (right) */}
+      <span
+        className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border border-white"
+        style={{ background: color }}
+      />
+    </motion.div>
+  );
+}
+
+// ── Hero ───────────────────────────────────────────────────────
 const PARTICLES = [
   { id: 0,  x: 15.2, y: 12.6, size: 2.0, duration: 5.2, delay: 0.0 },
   { id: 1,  x: 69.6, y: 49.4, size: 4.9, duration: 7.1, delay: 1.3 },
@@ -268,14 +556,13 @@ export default function Hero() {
   const y2 = useTransform(scrollY, [0, 500], [0, -30]);
   const opacity = useTransform(scrollY, [0, 400], [1, 0]);
 
-  const particles = PARTICLES;
-
   return (
-    <section ref={containerRef} className="relative min-h-screen flex flex-col justify-center overflow-hidden bg-white pt-16">
-      {/* Animated grid */}
+    <section
+      ref={containerRef}
+      className="relative min-h-screen flex flex-col justify-center overflow-hidden bg-white pt-16"
+    >
       <div className="absolute inset-0 grid-bg" />
 
-      {/* Ambient orbs */}
       <motion.div
         style={{ y: y1 }}
         className="absolute top-20 left-1/4 w-96 h-96 ambient-orb pointer-events-none"
@@ -289,8 +576,7 @@ export default function Hero() {
         transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 2 }}
       />
 
-      {/* Particles */}
-      {particles.map((p) => (
+      {PARTICLES.map((p) => (
         <motion.div
           key={p.id}
           className="absolute rounded-full bg-emerald-400 pointer-events-none"
@@ -317,9 +603,7 @@ export default function Hero() {
 
       <div className="relative max-w-7xl mx-auto px-6 py-12 md:py-20">
         <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-          {/* Left: Copy */}
           <motion.div style={{ opacity }}>
-            {/* Badge */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -327,10 +611,11 @@ export default function Hero() {
               className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-100 rounded-full px-4 py-1.5 mb-8"
             >
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-sm font-600 text-emerald-700">No-code MT4/MT5 strategy builder</span>
+              <span className="text-sm font-600 text-emerald-700">
+                No-code MT5 strategy builder
+              </span>
             </motion.div>
 
-            {/* Headline */}
             <div className="mb-6">
               <motion.h1
                 className="text-4xl md:text-5xl xl:text-6xl font-800 leading-[1.05] tracking-tight text-gray-900"
@@ -346,7 +631,11 @@ export default function Hero() {
                     className={`block ${li === 1 ? "text-gradient-em pb-2" : ""}`}
                     variants={{
                       hidden: { opacity: 0, y: 30 },
-                      visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } },
+                      visible: {
+                        opacity: 1,
+                        y: 0,
+                        transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
+                      },
                     }}
                   >
                     {line}
@@ -355,18 +644,15 @@ export default function Hero() {
               </motion.h1>
             </div>
 
-            {/* Sub */}
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
               className="text-lg text-gray-500 leading-relaxed mb-10 max-w-md"
             >
-              Design, export and launch automated MT4/MT5 strategies through a visual strategy builder.
-              No programming required.
+              Design and export production MT5 Expert Advisors visually. Drop nodes, wire them, generate clean MQL5 — and let the built-in AI build alongside you.
             </motion.p>
 
-            {/* CTAs */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -374,7 +660,7 @@ export default function Hero() {
               className="flex flex-wrap gap-4"
             >
               <MagneticButton
-                href="#pricing"
+                href="/sign-up"
                 className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-700 px-6 py-3.5 rounded-2xl shadow-xl shadow-emerald-500/30 transition-colors text-sm"
               >
                 Start Building Free
@@ -389,7 +675,6 @@ export default function Hero() {
               </MagneticButton>
             </motion.div>
 
-            {/* Trust badges */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -399,7 +684,7 @@ export default function Hero() {
               {[
                 { icon: Check, text: "No credit card required" },
                 { icon: ShieldCheck, text: "Cancel anytime" },
-                { icon: Zap, text: "Export in < 1s" },
+                { icon: Zap, text: "AI helper included" },
               ].map(({ icon: Icon, text }, i) => (
                 <div key={i} className="flex items-center gap-1.5 text-xs text-gray-400">
                   <Icon size={13} className="text-emerald-500" strokeWidth={2.5} />
@@ -408,7 +693,6 @@ export default function Hero() {
               ))}
             </motion.div>
 
-            {/* Social proof mini */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -417,7 +701,11 @@ export default function Hero() {
             >
               <div className="flex -space-x-2">
                 {["#10b981", "#6366f1", "#f59e0b", "#ef4444"].map((c, i) => (
-                  <div key={i} className="w-8 h-8 rounded-full border-2 border-white flex items-center justify-center text-xs font-700 text-white" style={{ background: c }}>
+                  <div
+                    key={i}
+                    className="w-8 h-8 rounded-full border-2 border-white flex items-center justify-center text-xs font-700 text-white"
+                    style={{ background: c }}
+                  >
                     {["JD", "MK", "AR", "TL"][i]}
                   </div>
                 ))}
@@ -428,12 +716,12 @@ export default function Hero() {
                     <Star key={i} size={12} className="text-amber-400 fill-amber-400" />
                   ))}
                 </div>
-                <p className="text-xs text-gray-500 mt-0.5">2,400+ strategies built</p>
+                <p className="text-xs text-gray-500 mt-0.5">Trusted by traders worldwide</p>
               </div>
             </motion.div>
           </motion.div>
 
-          {/* Right: Mockup */}
+          {/* Right: Builder mockup */}
           <motion.div
             initial={{ opacity: 0, y: 40, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -441,14 +729,12 @@ export default function Hero() {
             style={{ y: y2 }}
             className="relative hidden lg:block"
           >
-            {/* Glow behind mockup */}
             <div className="absolute -inset-8 bg-emerald-400/10 rounded-3xl blur-3xl" />
             <BuilderMockup />
           </motion.div>
         </div>
       </div>
 
-      {/* Scroll indicator */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
