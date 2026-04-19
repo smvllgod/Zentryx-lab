@@ -50,7 +50,7 @@ export const LOT_BLOCKS: BlockDefinition[] = [
     id: "lot.fixedRatio",
     family: "lot", subcategory: "anti-martin", name: "Fixed Ratio (Ryan Jones)",
     short: "Scale lots per delta-dollars equity gain.",
-    plan: "creator", priority: "P3", complexity: "advanced", status: "beta",
+    plan: "creator", priority: "P3", complexity: "advanced",
     affects: ["risk"], tags: ["lot", "ratio"],
     params: [
       { key: "baseLot", label: "Base lot", kind: "number", default: 0.1,
@@ -63,7 +63,7 @@ export const LOT_BLOCKS: BlockDefinition[] = [
     id: "lot.antiMartingale",
     family: "lot", subcategory: "anti-martin", name: "Anti-Martingale",
     short: "Scale up after wins, reset after losses.",
-    plan: "creator", priority: "P3", complexity: "advanced", status: "beta",
+    plan: "creator", priority: "P3", complexity: "advanced",
     affects: ["risk"], tags: ["lot", "anti-martingale"],
     params: [
       { key: "baseLot", label: "Base lot", kind: "number", default: 0.1 },
@@ -76,7 +76,7 @@ export const LOT_BLOCKS: BlockDefinition[] = [
     id: "lot.martingale",
     family: "lot", subcategory: "martin", name: "Martingale (guarded)",
     short: "Multiplier after losses — hard-capped.",
-    plan: "creator", priority: "P3", complexity: "advanced", status: "beta",
+    plan: "creator", priority: "P3", complexity: "advanced",
     affects: ["risk"], tags: ["lot", "martingale", "risky"],
     params: [
       { key: "baseLot", label: "Base lot", kind: "number", default: 0.05 },

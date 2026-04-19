@@ -125,7 +125,7 @@ export const UTILITY_BLOCKS: BlockDefinition[] = [
     id: "utility.cooldownAfterTp",
     family: "utility", subcategory: "behaviour", name: "Cooldown After TP",
     short: "Pause N minutes after TP hit.",
-    plan: "pro", priority: "P3", complexity: "basic", status: "beta",
+    plan: "pro", priority: "P3", complexity: "basic",
     affects: ["filter"], tags: ["cooldown"],
     params: [{ key: "minutes", label: "Cooldown (min)", kind: "integer", default: 15, unit: "min",
       validation: [{ kind: "required" }, { kind: "min", value: 1 }] }],

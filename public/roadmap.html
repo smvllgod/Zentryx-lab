@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Zentryx Lab — Product Roadmap</title>
+  <style>
+    :root {
+      --bg: #0b0f0d;
+      --bg-card: #12181560;
+      --border: #1f2824;
+      --ink: #e7ecea;
+      --ink-muted: #9aa39f;
+      --ink-dim: #606964;
+      --emerald: #10b981;
+      --emerald-soft: #34d399;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --blue: #38bdf8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+      background: radial-gradient(ellipse at top, #0d1311 0%, #080b0a 100%);
+      color: var(--ink);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 48px 32px 96px; }
+
+    /* Header */
+    header { margin-bottom: 40px; }
+    .brand {
+      display: inline-flex; align-items: center; gap: 10px;
+      font-size: 10px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--emerald); margin-bottom: 20px;
+    }
+    .brand-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--emerald); box-shadow: 0 0 20px var(--emerald); }
+    h1 {
+      font-size: clamp(30px, 4vw, 44px);
+      font-weight: 800; line-height: 1.1; letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #fff 0%, #34d399 70%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .lede { margin-top: 14px; font-size: 16px; color: var(--ink-muted); max-width: 620px; }
+
+    /* TOC */
+    nav.toc {
+      margin-top: 32px; padding: 16px; border: 1px solid var(--border);
+      background: var(--bg-card); border-radius: 12px;
+    }
+    nav.toc ol { padding-left: 20px; }
+    nav.toc li { padding: 2px 0; font-size: 13px; color: var(--ink-muted); }
+    nav.toc a { color: var(--ink-muted); text-decoration: none; }
+    nav.toc a:hover { color: var(--emerald-soft); }
+
+    /* Section */
+    section { margin-top: 56px; scroll-margin-top: 24px; }
+    section h2 {
+      font-size: 22px; font-weight: 800; letter-spacing: -0.01em;
+      display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px;
+    }
+    section h2 .tier {
+      font-size: 9px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
+      padding: 3px 7px; border-radius: 4px;
+    }
+    .tier.t1 { background: rgba(239,68,68,0.14); color: var(--red); border: 1px solid rgba(239,68,68,0.28); }
+    .tier.t2 { background: rgba(245,158,11,0.14); color: var(--amber); border: 1px solid rgba(245,158,11,0.28); }
+    .tier.t3 { background: rgba(56,189,248,0.14); color: var(--blue); border: 1px solid rgba(56,189,248,0.28); }
+    .tier.polish { background: rgba(154,163,159,0.14); color: var(--ink-muted); border: 1px solid rgba(154,163,159,0.28); }
+    section > p.hint { color: var(--ink-muted); font-size: 13px; margin-bottom: 20px; }
+
+    /* Feature card */
+    .f {
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      border-radius: 14px;
+      padding: 20px 22px;
+      margin-bottom: 12px;
+      transition: border-color 140ms ease, transform 140ms ease;
+    }
+    .f:hover { border-color: #2a3530; transform: translateY(-1px); }
+    .f h3 {
+      font-size: 16px; font-weight: 700; margin-bottom: 6px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .f .num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 24px; height: 24px; border-radius: 6px;
+      background: rgba(16,185,129,0.12); color: var(--emerald);
+      font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums;
+    }
+    .f .emoji { font-size: 16px; }
+    .f .why { font-size: 13px; color: var(--ink-muted); margin-bottom: 10px; }
+    .f .why strong { color: var(--ink); font-weight: 600; }
+    .f ul { margin: 8px 0 10px 20px; font-size: 13px; color: var(--ink-muted); }
+    .f ul li { padding: 2px 0; }
+    .f .meta {
+      display: flex; gap: 14px; flex-wrap: wrap;
+      font-size: 11px; color: var(--ink-dim);
+      padding-top: 10px; margin-top: 10px;
+      border-top: 1px dashed var(--border);
+    }
+    .f .meta span.effort { color: var(--emerald-soft); font-weight: 600; }
+    .f .meta span.impact { color: var(--amber); font-weight: 600; }
+
+    /* Done state */
+    .f.done { opacity: 0.55; }
+    .f.done .num { background: rgba(16,185,129,0.22); color: var(--emerald-soft); }
+    .f.done h3::after {
+      content: "✓ shipped"; margin-left: 8px;
+      font-size: 10px; font-weight: 700; color: var(--emerald); letter-spacing: 0.05em;
+    }
+
+    /* Plan table */
+    .plan-table {
+      width: 100%; border-collapse: collapse; font-size: 13px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+    }
+    .plan-table th, .plan-table td {
+      padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border);
+    }
+    .plan-table th {
+      font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--ink-muted); background: rgba(255,255,255,0.02);
+    }
+    .plan-table tr:last-child td { border-bottom: none; }
+
+    /* Debt */
+    .debt { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.22); border-radius: 12px; padding: 20px 22px; }
+    .debt h3 { font-size: 14px; font-weight: 800; color: var(--red); margin-bottom: 6px; }
+    .debt ul { font-size: 13px; color: var(--ink-muted); margin-left: 20px; }
+    .debt ul li { padding: 3px 0; }
+
+    /* Current state banner */
+    .now { background: linear-gradient(135deg, rgba(16,185,129,0.1), transparent);
+      border: 1px solid rgba(16,185,129,0.3); border-radius: 16px; padding: 22px 26px; margin-bottom: 36px; }
+    .now h2 { font-size: 16px; font-weight: 800; margin-bottom: 10px; }
+    .now ul { list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 8px 20px; font-size: 13px; color: var(--ink); }
+    .now ul li::before { content: "✓"; color: var(--emerald); font-weight: 800; margin-right: 8px; }
+
+    footer {
+      margin-top: 80px; padding-top: 32px; border-top: 1px solid var(--border);
+      font-size: 12px; color: var(--ink-dim);
+    }
+
+    code { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12px; color: #9fe4c4; background: rgba(16,185,129,0.07); padding: 1px 6px; border-radius: 4px; }
+    a.back {
+      display: inline-flex; align-items: center; gap: 6px; color: var(--ink-muted);
+      text-decoration: none; font-size: 12px; margin-top: 40px;
+    }
+    a.back:hover { color: var(--emerald-soft); }
+    @media (max-width: 640px) { .wrap { padding: 32px 20px 64px; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand"><span class="brand-dot"></span> Zentryx Lab · Roadmap</div>
+      <h1>Product roadmap</h1>
+      <p class="lede">
+        Ce que la plateforme sera dans les 6 prochains mois. Priorisé par impact × faisabilité.
+        Tier 1 = bloquants business · Tier 2 = différenciateurs · Tier 3 = expansion · Polish = en continu.
+        Les cartes marquées <em>shipped</em> sont déjà en prod.
+      </p>
+
+      <nav class="toc">
+        <strong style="font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-muted);">Contents</strong>
+        <ol>
+          <li><a href="#now">Ce qui est déjà en place</a></li>
+          <li><a href="#tier1">Tier 1 — Bloquants business (0-6 semaines)</a></li>
+          <li><a href="#tier2">Tier 2 — Différenciateurs (6-12 semaines)</a></li>
+          <li><a href="#tier3">Tier 3 — Expansion (Q2/Q3)</a></li>
+          <li><a href="#polish">Polish continu</a></li>
+          <li><a href="#debt">Dette technique</a></li>
+          <li><a href="#plan30">Plan 30 jours</a></li>
+        </ol>
+      </nav>
+    </header>
+
+    <!-- Now ─────────────────────────────────────────────────────── -->
+    <section id="now">
+      <div class="now">
+        <h2>Déjà en place</h2>
+        <ul>
+          <li>214 blocks dans le registry (40 actifs, 170+ beta)</li>
+          <li>Builder React Flow + Inspector + Diagnostics</li>
+          <li>Compilateur MQL5 avec SectionContribution pipeline</li>
+          <li>AI Claude assistant (Cmd-K, conversations)</li>
+          <li>EA Appearance system (6 thèmes, 17 KPI modules)</li>
+          <li>License / protection (account lock, expiry, key server)</li>
+          <li>Marketplace public + reviews + galerie images</li>
+          <li>Admin dashboard V1.1 (audit log, heatmap, Cmd-K, 14 pages)</li>
+          <li>Google OAuth + onboarding wizard 7 étapes</li>
+          <li>Supabase backend avec RLS propre (8 migrations)</li>
+          <li>Docs complètes (14 sections, structure Start/Build/Ship/Distribute)</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Tier 1 ──────────────────────────────────────────────────── -->
+    <section id="tier1">
+      <h2>Tier 1 <span class="tier t1">Bloquants business</span></h2>
+      <p class="hint">Sans ces briques, Zentryx Lab reste un beau projet. Avec elles, c'est un SaaS qui facture.</p>
+
+      <article class="f">
+        <h3><span class="num">1</span><span class="emoji">💳</span> Stripe Checkout + Connect</h3>
+        <p class="why"><strong>Pourquoi :</strong> aujourd'hui le bouton "Buy now" est un stub. Tu ne monétises rien. Débloque les revenus marketplace + permet de payer les créateurs automatiquement via Stripe Connect.</p>
+        <ul>
+          <li>Netlify function <code>stripe-checkout.ts</code> qui crée une session pour un <code>listing_id</code></li>
+          <li>Webhook <code>stripe-webhook.ts</code> qui insère dans <code>purchases</code> avec <code>status='paid'</code></li>
+          <li>Stripe Connect pour payouts créateurs (sinon compta manuelle)</li>
+          <li>Page <code>/billing</code> branchée sur de vrais produits Stripe pour les plans Pro/Creator</li>
+        </ul>
+        <div class="meta"><span class="effort">Effort : 2-3 jours</span><span class="impact">Impact : débloque la monétisation</span></div>
+      </article>
+
+      <article class="f">
+        <h3><span class="num">2</span><span class="emoji">🎁</span> Strategy templates + Fork</h3>
+        <p class="why"><strong>Pourquoi :</strong> un nouveau user arrive sur un canvas vide → 50 % abandonnent. Un template qui marche en 30 sec = activation 20 % → 60 %+.</p>
+        <ul>
+          <li>Table <code>strategy_templates</code> avec ~10 presets (EMA cross, Donchian, RSI mean-revert, prop-firm safe, etc.)</li>
+          <li>Bouton "Start from template" dans <code>/strategies</code></li>
+          <li>Bouton "Fork this strategy" sur chaque listing marketplace</li>
+          <li>Bouton "Duplicate" sur une stratégie existante</li>
+        </ul>
+        <div class="meta"><span class="effort">Effort : 2 jours</span><span class="impact">Impact : activation + effet viral marketplace</span></div>
+      </article>
+
+      <article class="f">
+        <h3><span class="num">3</span><span class="emoji">📊</span> Backtest runner côté navigateur</h3>
+        <p class="why"><strong>Pourquoi :</strong> tester aujourd'hui = MT5 Strategy Tester, 15 min minimum. Avec un backtest in-browser en 10 secondes, Zentryx devient incontournable. C'est ton moat.</p>
+        <ul>
+          <li>Data historique OHLC bundlée (Binance crypto / Yahoo FX) ou fetch à la demande</li>
+          <li>Runtime JS qui simule entry/exit du graph</li>
+          <li>Panneau Backtest dans le builder : equity curve, PnL, max DD, Sharpe, trade list, R-multiples</li>
+          <li>Tourne 100 % client-side — zéro coût infra</li>
+        </ul>
+        <div class="meta"><span class="effort">Effort : 5-7 jours</span><span class="impact">Impact : killer feature + contenu viral</span></div>
+      </article>
+
+      <article class="f">
+        <h3><span class="num">4</span><span class="emoji">📡</span> Live telemetry depuis MT5</h3>
+        <p class="why"><strong>Pourquoi :</strong> quand un user déploie son EA, le feedback est mort. Ajouter 4 lignes de MQL5 qui POSTent les trades → le user voit son EA live dans Zentryx. Les créateurs prouvent leurs résultats en live = trust énorme.</p>
+        <ul>
+          <li>Netlify function <code>strategy-telemetry.ts</code></li>
+          <li>Colonne <code>telemetry_token</code> sur <code>strategies</code>, générée à l'export</li>
+          <li>Helper MQL5 <code>ZxReportTrade()</code> dans le template</li>
+          <li>Page <code>/strategies/[id]/live</code> : PnL live, trades, win rate, equity chart</li>
+          <li>Badge "Live performance" sur les listings marketplace qui partagent</li>
+        </ul>
+        <div class="meta"><span class="effort">Effort : 3-4 jours</span><span class="impact">Impact : marketplace devient source de vérité</span></div>
+      </article>
+
+      <article class="f">
+        <h3><span class="num">5</span><span class="emoji">🔔</span> Notifications système</h3>
+        <p class="why"><strong>Pourquoi :</strong> un user ne revient pas s'il n'a pas de raison. Notifs = retention +30-50 %.</p>
+        <ul>
+          <li>Table <code>notifications</code> (user_id, kind, payload, read_at)</li>
+          <li>Bell icon in-app avec feed (achat, review, license activated, telemetry alert)</li>
+          <li>Email digest quotidien via Resend ou Postmark</li>
+          <li>Préférences dans Settings</li>
+        </ul>
+        <div class="meta"><span class="effort">Effort : 2-3 jours</span><span class="impact">Impact : retention +30-50 %</span></div>
+      </article>
+    </section>
+
+    <!-- Tier 2 ──────────────────────────────────────────────────── -->
+    <section id="tier2">
+      <h2>Tier 2 <span class="tier t2">Différenciateurs</span></h2>
+      <p class="hint">Une fois Tier 1 shipped. Ces features font parler de Zentryx Lab.</p>
+
+      <article class="f">
+        <h3><span class="num">6</span><span class="emoji">👤</span> Profils créateurs publics + Follow</h3>
+        <p class="why"><strong>En cours (autre agent).</strong> Je compléterai avec système d'abonnement follow/unfollow + feed des nouveaux listings des créateurs suivis + badges créateurs (top-rated, prolific, etc.) quand l'autre agent aura livré la base.</p>
+        <div class="meta"><span class="effort">Effort : 3-4 jours</span><span class="impact">Impact : discovery + rétention</span></div>
+      </article>
+
+      <article class="f">
+        <h3><span class="num">7</span><span class="emoji">🎯</span> Prop-firm presets</h3>
+        <p class="why"><strong>Pourquoi :</strong> FTMO, MFF, The Funded Trader — chaque challenge a ses règles. Un flow "Configure for FTMO" qui applique automatiquement les bons blocks avec les bonnes valeurs. Niche qui convertit Pro/Creator 3× plus que la moyenne.</p>
+        <ul>
+          <li>Templates spécialisés par prop-firm (max daily loss, max DD, profit target)</li>
+          <li>Badge "FTMO-ready" / "MFF-ready" sur les listings qui en ont</li>
+          <li>Validateur qui vérifie que la stratégie respecte les règles avant export</li>
+        </ul>
+        <div class="meta"><span class="effort">Effort : 2-3 jours</span><span class="impact">Impact : niche premium</span></div>
+      </article>
+
+      <article class="f">
+        <h3><span class="num">8</span><span class="emoji">🔬</span> Parameter optimizer / grid search</h3>
+        <p class="why"><strong>Pourquoi :</strong> couplé au backtest Tier 1. "Try ATR period 10-30 step 2" → sweep paramétrique, ranking Sharpe/R. Feature des outils pro à 500 $/mois. Tu la fais Pro.</p>
+        <div class="meta"><span class="effort">Effort : 3-4 jours</span><span class="impact">Impact : avantage pro</span></div>
+      </article>
+
+      <article class="f">
+        <h3><span class="num">9</span><span class="emoji">📱</span> Mobile-responsive (view + params)</h3>
+        <p class="why"><strong>Pourquoi :</strong> le builder canvas ne marche pas sur mobile. Mais 80 % du besoin mobile = ouvrir une stratégie existante et ajuster ses inputs. View-only + param tweak suffit.</p>
+        <div class="meta"><span class="effort">Effort : 2-3 jours</span><span class="impact">Impact : accessibilité</span></div>
+      </article>
+
+      <article class="f">
+        <h3><span class="num">10</span><span class="emoji">🛠️</span> Block recipes / community snippets</h3>
+        <p class="why"><strong>Pourquoi :</strong> users partagent des "morceaux" de stratégie (3-4 nodes + params). Autres import en 1 clic. Social layer léger qui alimente l'activité.</p>
+        <div class="meta"><span class="effort">Effort : 3-4 jours</span><span class="impact">Impact : engagement + SEO</span></div>
+      </article>
+    </section>
+
+    <!-- Tier 3 ──────────────────────────────────────────────────── -->
+    <section id="tier3">
+      <h2>Tier 3 <span class="tier t3">Expansion</span></h2>
+
+      <article class="f">
+        <h3><span class="num">11</span><span class="emoji">📈</span> MT4 export</h3>
+        <p class="why"><strong>Pourquoi :</strong> MT4 domine encore Asie / Afrique / LATAM. Double l'adressable market. Transpiler MQL5→MQL4 dans le compiler.</p>
+        <div class="meta"><span class="effort">Effort : 7-10 jours</span><span class="impact">Impact : +100 % TAM</span></div>
+      </article>
+
+      <article class="f">
+        <h3><span class="num">12</span><span class="emoji">🔌</span> MT5 deploy-helper local</h3>
+        <p class="why"><strong>Pourquoi :</strong> app Electron / CLI qui watch Zentryx → auto-copy dans <code>MQL5/Experts/</code> + reload MT5. "One-click deploy". Friction killer pour les non-tech.</p>
+        <div class="meta"><span class="effort">Effort : 5-7 jours</span><span class="impact">Impact : friction -80 %</span></div>
+      </article>
+
+      <article class="f">
+        <h3><span class="num">13</span><span class="emoji">📢</span> Signal copy service</h3>
+        <p class="why"><strong>Pourquoi :</strong> au-delà du marketplace, un créateur expose sa stratégie comme signal provider. Subscribers copient les trades. Revenu récurrent, pas one-shot.</p>
+        <div class="meta"><span class="effort">Effort : 10-15 jours</span><span class="impact">Impact : revenu récurrent</span></div>
+      </article>
+
+      <article class="f">
+        <h3><span class="num">14</span><span class="emoji">🌍</span> i18n (FR / ES / AR / PT)</h3>
+        <p class="why"><strong>Pourquoi :</strong> trading est international. Tu es francophone → porte de sortie immédiate. <code>next-intl</code> + 4 langues = +40 % d'audience.</p>
+        <div class="meta"><span class="effort">Effort : 4-5 jours</span><span class="impact">Impact : +40 % audience</span></div>
+      </article>
+
+      <article class="f">
+        <h3><span class="num">15</span><span class="emoji">🎁</span> Affiliate program</h3>
+        <p class="why"><strong>Pourquoi :</strong> <code>?ref=jordan</code> cookie → 20 % rev share pendant 12 mois. Les créateurs deviennent tes ambassadeurs. Growth hack #1 pour marketplace.</p>
+        <div class="meta"><span class="effort">Effort : 3-4 jours</span><span class="impact">Impact : growth viral</span></div>
+      </article>
+    </section>
+
+    <!-- Polish ──────────────────────────────────────────────────── -->
+    <section id="polish">
+      <h2>Polish <span class="tier polish">Continu</span></h2>
+      <p class="hint">Ne bloque rien, à intégrer au fil des sprints.</p>
+
+      <article class="f">
+        <ul>
+          <li><strong>Dark mode</strong> global (actuellement partiel AI panel)</li>
+          <li><strong>Changelog public</strong> (<code>/changelog</code>) pour annoncer nouveaux blocks/features</li>
+          <li><strong>Onboarding video</strong> 90s (Loom embed)</li>
+          <li><strong>Guided tour</strong> intra-builder pour nouveaux users (Shepherd.js ou maison)</li>
+          <li><strong>Slack/Discord/Telegram webhooks</strong> pour notifications créateur</li>
+          <li><strong>Exports history</strong> avec vrai compteur "times downloaded"</li>
+          <li><strong>Block quality signals</strong> : les plus utilisés + mieux notés remontent dans NodeLibrary</li>
+          <li><strong>SEO landing pages</strong> par style (<code>/solutions/scalping</code>, <code>/solutions/prop-firm</code>)</li>
+          <li><strong>Admin alerts</strong> Discord webhook sur erreurs système</li>
+          <li><strong>Block version tracking</strong> — stratégies existantes restent sur l'ancienne version si un block évolue</li>
+          <li><strong>Export JSON</strong> d'une stratégie pour backup hors plateforme</li>
+          <li><strong>Strategy version diff UI</strong> — comparer deux snapshots côte-à-côte</li>
+        </ul>
+      </article>
+    </section>
+
+    <!-- Dette technique ─────────────────────────────────────────── -->
+    <section id="debt">
+      <h2>Dette technique <span class="tier t1">À traiter</span></h2>
+      <div class="debt">
+        <h3>À surveiller</h3>
+        <ul>
+          <li><code>NodeType</code> widened à <code>string | (string & {})</code> — consolider un jour le registry legacy (40) + modulaire (214) en un seul</li>
+          <li>Plusieurs <code>@ts-nocheck</code> sur fichiers Supabase (supabase-js v2 générique <code>never</code>) — bloqueur pour vraie type-safety</li>
+          <li><strong>170+ blocks en <code>beta</code></strong> — ils n'ont pas de traducteur MQL5. Plan : promouvoir par batches, un traducteur à la fois. Aucun ne doit rester beta plus de 2 mois.</li>
+          <li>Zéro tests automatisés. Un Playwright qui teste signup → build → export → valide le mq5 doit arriver avant que la base users ne grandisse.</li>
+          <li>Pas de rate limiting sur <code>ai-chat</code> Netlify function — risque d'abus OpenAI/Anthropic costs</li>
+          <li>Pas encore de retry / exponential-backoff sur les appels Supabase côté client</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Plan 30 jours ───────────────────────────────────────────── -->
+    <section id="plan30">
+      <h2>Plan 30 jours concret</h2>
+      <p class="hint">Ma reco de séquence pour transformer le projet en vraie machine à revenu.</p>
+      <table class="plan-table">
+        <thead>
+          <tr><th style="width:90px;">Semaine</th><th>Focus</th><th>Outcome</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>S1-2</strong></td><td>Stripe Checkout + Webhook + Stripe Connect payouts</td><td>Première transaction marketplace réelle</td></tr>
+          <tr><td><strong>S2-3</strong></td><td>Strategy templates + Fork this strategy</td><td>Activation new users x2</td></tr>
+          <tr><td><strong>S3-4</strong></td><td>Backtest runner in-browser</td><td>Feature virale + contenu social</td></tr>
+          <tr><td><strong>S4</strong></td><td>Notifications (in-app + email digest)</td><td>Retention +30-50%</td></tr>
+          <tr><td><strong>Mois 2</strong></td><td>Live telemetry depuis MT5</td><td>Marketplace devient source de vérité</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer>
+      <p>Roadmap vivante — mise à jour au fil des livraisons. Source : <code>docs/roadmap.html</code>.</p>
+      <a class="back" href="../">← retour au repo</a>
+    </footer>
+  </div>
+</body>
+</html>

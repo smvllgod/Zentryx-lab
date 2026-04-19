@@ -66,6 +66,26 @@ import { translate_manage_breakEvenAtrMulti } from "./manage-breakEvenAtrMulti";
 import { translate_mtf_higherTfRsi } from "./mtf-higherTfRsi";
 import { translate_mtf_dailyBias } from "./mtf-dailyBias";
 
+// ── Batch 2 (2026-04): remaining 155 blocks ─────────────────────────
+import * as B2Mom from "./batch2-momentum";
+import * as B2Conf from "./batch2-confirm";
+import * as B2Trend from "./batch2-trend";
+import * as B2Vol from "./batch2-vol";
+import * as B2Sess from "./batch2-session";
+import * as B2Mtf from "./batch2-mtf";
+import * as B2Exec from "./batch2-exec";
+import * as B2Exit from "./batch2-exit";
+import * as B2Lot from "./batch2-lot";
+import * as B2Risk from "./batch2-risk";
+import * as B2Mng from "./batch2-manage";
+import * as B2Util from "./batch2-utility";
+import * as B2Entry from "./batch2-entry";
+import * as B2Candle from "./batch2-candle";
+import * as B2Struct from "./batch2-struct";
+import * as B2News from "./batch2-news";
+import * as B2Grid from "./batch2-grid";
+import * as B2Bskt from "./batch2-basket";
+
 // Any node type not present here is treated as a "stub": the compiler
 // emits a warning diagnostic and skips code generation for that node,
 // but the rest of the strategy still compiles. This lets the library
@@ -144,6 +164,198 @@ export const TRANSLATORS: Partial<Record<NodeType, Translator>> = {
   "manage.breakEvenAtrMulti": translate_manage_breakEvenAtrMulti,
   "mtf.higherTfRsi": translate_mtf_higherTfRsi,
   "mtf.dailyBias": translate_mtf_dailyBias,
+
+  // ── Batch 2: remaining 155 blocks ───────────────────────────────
+  // momentum
+  "momentum.rsiBand": B2Mom.translate_momentum_rsiBand,
+  "momentum.macdHist": B2Mom.translate_momentum_macdHist,
+  "momentum.rocThreshold": B2Mom.translate_momentum_rocThreshold,
+  "momentum.momentumIndex": B2Mom.translate_momentum_momentumIndex,
+  "momentum.williamsR": B2Mom.translate_momentum_williamsR,
+  "momentum.trix": B2Mom.translate_momentum_trix,
+  "momentum.rsiDivergence": B2Mom.translate_momentum_rsiDivergence,
+  "momentum.macdDivergence": B2Mom.translate_momentum_macdDivergence,
+
+  // confirmation
+  "confirm.rsiSide": B2Conf.translate_confirm_rsiSide,
+  "confirm.stochSlope": B2Conf.translate_confirm_stochSlope,
+  "confirm.priceVsVwap": B2Conf.translate_confirm_priceVsVwap,
+  "confirm.higherHigh": B2Conf.translate_confirm_higherHigh,
+  "confirm.atrAboveMa": B2Conf.translate_confirm_atrAboveMa,
+  "confirm.tickVolume": B2Conf.translate_confirm_tickVolume,
+  "confirm.obvSlope": B2Conf.translate_confirm_obvSlope,
+  "confirm.minBarsSinceSignal": B2Conf.translate_confirm_minBarsSinceSignal,
+
+  // trend
+  "trend.emaSlope": B2Trend.translate_trend_emaSlope,
+  "trend.adxStrength": B2Trend.translate_trend_adxStrength,
+  "trend.adxNonTrend": B2Trend.translate_trend_adxNonTrend,
+  "trend.higherTfEma": B2Trend.translate_trend_higherTfEma,
+  "trend.ichimokuCloudSide": B2Trend.translate_trend_ichimokuCloudSide,
+  "trend.hullDirection": B2Trend.translate_trend_hullDirection,
+  "trend.supertrend": B2Trend.translate_trend_supertrend,
+  "trend.aroon": B2Trend.translate_trend_aroon,
+  "trend.dmiDirection": B2Trend.translate_trend_dmiDirection,
+  "trend.linearRegression": B2Trend.translate_trend_linearRegression,
+
+  // volatility
+  "vol.atrBand": B2Vol.translate_vol_atrBand,
+  "vol.atrBelowAverage": B2Vol.translate_vol_atrBelowAverage,
+  "vol.keltnerInside": B2Vol.translate_vol_keltnerInside,
+  "vol.stdDevThreshold": B2Vol.translate_vol_stdDevThreshold,
+  "vol.dailyRange": B2Vol.translate_vol_dailyRange,
+  "vol.volatilityRatio": B2Vol.translate_vol_volatilityRatio,
+  "vol.gapFilter": B2Vol.translate_vol_gapFilter,
+  "vol.weekendCarry": B2Vol.translate_vol_weekendCarry,
+
+  // session
+  "session.customWindow": B2Sess.translate_session_customWindow,
+  "session.london": B2Sess.translate_session_london,
+  "session.overlap": B2Sess.translate_session_overlap,
+  "session.monthOfYear": B2Sess.translate_session_monthOfYear,
+  "session.holidayCalendar": B2Sess.translate_session_holidayCalendar,
+
+  // mtf
+  "mtf.higherTfAlignment": B2Mtf.translate_mtf_higherTfAlignment,
+  "mtf.higherTfMacd": B2Mtf.translate_mtf_higherTfMacd,
+  "mtf.lowerTfTrigger": B2Mtf.translate_mtf_lowerTfTrigger,
+  "mtf.weeklyBias": B2Mtf.translate_mtf_weeklyBias,
+  "mtf.htfStructure": B2Mtf.translate_mtf_htfStructure,
+  "mtf.htfVolatility": B2Mtf.translate_mtf_htfVolatility,
+
+  // execution
+  "exec.spreadLimit": B2Exec.translate_exec_spreadLimit,
+  "exec.slippageControl": B2Exec.translate_exec_slippageControl,
+  "exec.minStopsLevel": B2Exec.translate_exec_minStopsLevel,
+  "exec.freezeLevel": B2Exec.translate_exec_freezeLevel,
+  "exec.minEquity": B2Exec.translate_exec_minEquity,
+  "exec.marginLevelFloor": B2Exec.translate_exec_marginLevelFloor,
+  "exec.symbolWhitelist": B2Exec.translate_exec_symbolWhitelist,
+
+  // exit
+  "exit.fixedTpSlPrice": B2Exit.translate_exit_fixedTpSlPrice,
+  "exit.timeExit": B2Exit.translate_exit_timeExit,
+  "exit.endOfWeek": B2Exit.translate_exit_endOfWeek,
+  "exit.oppositeSignal": B2Exit.translate_exit_oppositeSignal,
+  "exit.indicatorReversal": B2Exit.translate_exit_indicatorReversal,
+  "exit.takeProfitLadder": B2Exit.translate_exit_takeProfitLadder,
+  "exit.drawdownExit": B2Exit.translate_exit_drawdownExit,
+  "exit.equityDDExit": B2Exit.translate_exit_equityDDExit,
+  "exit.ichimokuKijunExit": B2Exit.translate_exit_ichimokuKijunExit,
+
+  // lot
+  "lot.fromCashRisk": B2Lot.translate_lot_fromCashRisk,
+  "lot.fixedRatio": B2Lot.translate_lot_fixedRatio,
+  "lot.antiMartingale": B2Lot.translate_lot_antiMartingale,
+  "lot.martingale": B2Lot.translate_lot_martingale,
+  "lot.volatilityScaled": B2Lot.translate_lot_volatilityScaled,
+  "lot.equityTiered": B2Lot.translate_lot_equityTiered,
+
+  // risk
+  "risk.atrRisk": B2Risk.translate_risk_atrRisk,
+  "risk.fixedCashRisk": B2Risk.translate_risk_fixedCashRisk,
+  "risk.drawdownScale": B2Risk.translate_risk_drawdownScale,
+  "risk.equityCurveStop": B2Risk.translate_risk_equityCurveStop,
+  "risk.kellyFraction": B2Risk.translate_risk_kellyFraction,
+  "risk.weeklyRiskBudget": B2Risk.translate_risk_weeklyRiskBudget,
+
+  // management
+  "manage.chandelierTrail": B2Mng.translate_manage_chandelierTrail,
+  "manage.percentTrail": B2Mng.translate_manage_percentTrail,
+  "manage.stepTrail": B2Mng.translate_manage_stepTrail,
+  "manage.partialCloseAtr": B2Mng.translate_manage_partialCloseAtr,
+  "manage.pyramiding": B2Mng.translate_manage_pyramiding,
+  "manage.antiPyramiding": B2Mng.translate_manage_antiPyramiding,
+  "manage.reentryCooldown": B2Mng.translate_manage_reentryCooldown,
+  "manage.hedgeAgainstDd": B2Mng.translate_manage_hedgeAgainstDd,
+  "manage.convertToBreakEven": B2Mng.translate_manage_convertToBreakEven,
+
+  // utility
+  "utility.maxWeeklyLoss": B2Util.translate_utility_maxWeeklyLoss,
+  "utility.maxConsecutiveLosses": B2Util.translate_utility_maxConsecutiveLosses,
+  "utility.maxSpread": B2Util.translate_utility_maxSpread,
+  "utility.minBalance": B2Util.translate_utility_minBalance,
+  "utility.cooldownAfterSl": B2Util.translate_utility_cooldownAfterSl,
+  "utility.cooldownAfterTp": B2Util.translate_utility_cooldownAfterTp,
+
+  // entry
+  "entry.macdZeroCross": B2Entry.translate_entry_macdZeroCross,
+  "entry.rsiCross": B2Entry.translate_entry_rsiCross,
+  "entry.adxCross": B2Entry.translate_entry_adxCross,
+  "entry.ichimokuKijun": B2Entry.translate_entry_ichimokuKijun,
+  "entry.bollingerBreak": B2Entry.translate_entry_bollingerBreak,
+  "entry.nBarBreakout": B2Entry.translate_entry_nBarBreakout,
+  "entry.atrBreakout": B2Entry.translate_entry_atrBreakout,
+  "entry.sessionBreakout": B2Entry.translate_entry_sessionBreakout,
+  "entry.stochExtreme": B2Entry.translate_entry_stochExtreme,
+  "entry.bollingerMeanRev": B2Entry.translate_entry_bollingerMeanRev,
+  "entry.supportResistance": B2Entry.translate_entry_supportResistance,
+  "entry.trendlineBreak": B2Entry.translate_entry_trendlineBreak,
+  "entry.priceActionPinbar": B2Entry.translate_entry_priceActionPinbar,
+  "entry.engulfingTrigger": B2Entry.translate_entry_engulfingTrigger,
+  "entry.multiSignal": B2Entry.translate_entry_multiSignal,
+
+  // candle patterns
+  "candle.pinBar": B2Candle.translate_candle_pinBar,
+  "candle.doji": B2Candle.translate_candle_doji,
+  "candle.marubozu": B2Candle.translate_candle_marubozu,
+  "candle.engulfing": B2Candle.translate_candle_engulfing,
+  "candle.harami": B2Candle.translate_candle_harami,
+  "candle.insideBar": B2Candle.translate_candle_insideBar,
+  "candle.outsideBar": B2Candle.translate_candle_outsideBar,
+  "candle.morningStar": B2Candle.translate_candle_morningStar,
+  "candle.eveningStar": B2Candle.translate_candle_eveningStar,
+  "candle.threeWhiteSoldiers": B2Candle.translate_candle_threeWhiteSoldiers,
+  "candle.threeBlackCrows": B2Candle.translate_candle_threeBlackCrows,
+  "candle.piercing": B2Candle.translate_candle_piercing,
+  "candle.tweezer": B2Candle.translate_candle_tweezer,
+  "candle.rangeFilter": B2Candle.translate_candle_rangeFilter,
+
+  // structure
+  "struct.swingHigherHigh": B2Struct.translate_struct_swingHigherHigh,
+  "struct.swingLowerLow": B2Struct.translate_struct_swingLowerLow,
+  "struct.bosBreakOfStructure": B2Struct.translate_struct_bosBreakOfStructure,
+  "struct.chochChange": B2Struct.translate_struct_chochChange,
+  "struct.fractalFilter": B2Struct.translate_struct_fractalFilter,
+  "struct.supportResistance": B2Struct.translate_struct_supportResistance,
+  "struct.pivotPoint": B2Struct.translate_struct_pivotPoint,
+  "struct.supplyDemandZone": B2Struct.translate_struct_supplyDemandZone,
+  "struct.orderBlock": B2Struct.translate_struct_orderBlock,
+  "struct.fairValueGap": B2Struct.translate_struct_fairValueGap,
+  "struct.roundNumber": B2Struct.translate_struct_roundNumber,
+  "struct.priorDayExtreme": B2Struct.translate_struct_priorDayExtreme,
+
+  // news
+  "news.pauseAround": B2News.translate_news_pauseAround,
+  "news.highImpactOnly": B2News.translate_news_highImpactOnly,
+  "news.currencyScope": B2News.translate_news_currencyScope,
+  "news.closeBeforeNews": B2News.translate_news_closeBeforeNews,
+  "news.dailyMacroBlock": B2News.translate_news_dailyMacroBlock,
+  "news.csvFeed": B2News.translate_news_csvFeed,
+  "news.sentimentFilter": B2News.translate_news_sentimentFilter,
+
+  // grid
+  "grid.basic": B2Grid.translate_grid_basic,
+  "grid.atrSpaced": B2Grid.translate_grid_atrSpaced,
+  "grid.martingaleGrid": B2Grid.translate_grid_martingaleGrid,
+  "grid.antiGrid": B2Grid.translate_grid_antiGrid,
+  "grid.pyramidGrid": B2Grid.translate_grid_pyramidGrid,
+  "grid.averagingDown": B2Grid.translate_grid_averagingDown,
+  "grid.recoveryOnOppositeSig": B2Grid.translate_grid_recoveryOnOppositeSig,
+  "grid.hedgeRecovery": B2Grid.translate_grid_hedgeRecovery,
+  "grid.smartClose": B2Grid.translate_grid_smartClose,
+
+  // basket
+  "basket.totalProfitTarget": B2Bskt.translate_basket_totalProfitTarget,
+  "basket.totalLossStop": B2Bskt.translate_basket_totalLossStop,
+  "basket.profitPct": B2Bskt.translate_basket_profitPct,
+  "basket.lossPct": B2Bskt.translate_basket_lossPct,
+  "basket.lockInProfit": B2Bskt.translate_basket_lockInProfit,
+  "basket.hedgedClose": B2Bskt.translate_basket_hedgedClose,
+  "basket.symbolGroup": B2Bskt.translate_basket_symbolGroup,
+  "basket.correlationCap": B2Bskt.translate_basket_correlationCap,
+  "basket.magicScope": B2Bskt.translate_basket_magicScope,
+  "basket.emergencyBasket": B2Bskt.translate_basket_emergencyBasket,
 };
 
 export function hasTranslator(node: StrategyNode): boolean {

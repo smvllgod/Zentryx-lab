@@ -54,7 +54,7 @@ export const EXECUTION_BLOCKS: BlockDefinition[] = [
     id: "exec.freezeLevel",
     family: "execution", subcategory: "broker", name: "Freeze-Level Check",
     short: "Block modifications within freeze level.",
-    plan: "pro", priority: "P3", complexity: "intermediate", status: "beta",
+    plan: "pro", priority: "P3", complexity: "intermediate",
     affects: ["filter"], tags: ["broker"], params: [],
   }),
   block({

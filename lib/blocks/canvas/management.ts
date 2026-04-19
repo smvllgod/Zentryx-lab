@@ -121,7 +121,7 @@ export const MANAGEMENT_BLOCKS: BlockDefinition[] = [
     id: "manage.pyramiding",
     family: "management", subcategory: "scale-in", name: "Pyramiding",
     short: "Add every N pips in-profit (capped).",
-    plan: "creator", priority: "P3", complexity: "advanced", status: "beta",
+    plan: "creator", priority: "P3", complexity: "advanced",
     affects: ["management"], tags: ["pyramiding"],
     params: [
       P_PIPS("stepPips", "Step", 20, { min: 1 }),
@@ -133,7 +133,7 @@ export const MANAGEMENT_BLOCKS: BlockDefinition[] = [
     id: "manage.antiPyramiding",
     family: "management", subcategory: "scale-out", name: "Scale-Out on Weakness",
     short: "Reduce size when momentum fades.",
-    plan: "creator", priority: "P3", complexity: "advanced", status: "beta",
+    plan: "creator", priority: "P3", complexity: "advanced",
     affects: ["management"], tags: ["scale-out"], params: [],
   }),
   block({
@@ -151,7 +151,7 @@ export const MANAGEMENT_BLOCKS: BlockDefinition[] = [
     id: "manage.hedgeAgainstDd",
     family: "management", subcategory: "hedge", name: "Hedge Against Drawdown",
     short: "Open inverse trade if DD > threshold.",
-    plan: "creator", priority: "P3", complexity: "advanced", status: "beta",
+    plan: "creator", priority: "P3", complexity: "advanced",
     affects: ["management"], tags: ["hedge"],
     params: [
       { key: "ddPercent", label: "Trigger DD (%)", kind: "number", default: 3,
@@ -162,7 +162,7 @@ export const MANAGEMENT_BLOCKS: BlockDefinition[] = [
     id: "manage.convertToBreakEven",
     family: "management", subcategory: "sl", name: "Smart BE on Opposite Signal",
     short: "BE+offset once opposing signal appears.",
-    plan: "creator", priority: "P3", complexity: "advanced", status: "beta",
+    plan: "creator", priority: "P3", complexity: "advanced",
     affects: ["management"], tags: ["break-even", "smart"],
     params: [P_PIPS("offsetPips", "Offset", 1, { min: 0 })],
   }),
