@@ -495,6 +495,9 @@ export default function BuilderPage() {
               <Button variant="secondary" size="sm" onClick={handleValidate}>
                 <Play size={13} /> Validate
               </Button>
+              <Button variant="secondary" size="sm" onClick={() => setAppearanceOpen(true)}>
+                <Paintbrush size={13} /> Appearance
+              </Button>
               <Button variant="secondary" size="sm" onClick={() => setPreviewOpen(true)}>
                 <Code2 size={13} /> Preview code
               </Button>

@@ -49,6 +49,8 @@ export interface AiChatRequestBody {
   nodeTypes: string[];
   /** Optional strategy id so we can persist the conversation. */
   strategyId?: string | null;
+  /** Existing conversation id to append to; omitted on first turn. */
+  conversationId?: string | null;
 }
 
 export interface AiChatOkResponse {
@@ -59,6 +61,20 @@ export interface AiChatOkResponse {
   remaining: number | null;
   /** Quota info for UI. */
   quota: { type: "lifetime" | "daily"; used: number; limit: number };
+  /** The conversation this turn belongs to — created server-side on first turn. */
+  conversationId: string;
+  /** Auto-derived title (only sent on the first turn of a conversation). */
+  conversationTitle?: string;
+}
+
+export interface AiConversationSummary {
+  id: string;
+  strategyId: string | null;
+  title: string;
+  pinned: boolean;
+  messageCount: number;
+  lastMessageAt: string;
+  createdAt: string;
 }
 
 export interface AiChatErrorResponse {

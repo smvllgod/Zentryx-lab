@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -13,34 +13,54 @@ import {
   AlertCircle,
   Zap,
   Wrench,
+  History,
+  Plus,
+  Trash2,
+  Pin,
+  Pencil,
+  Check,
+  ChevronLeft,
+  Square,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth/context";
 import { getSupabase } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/toast";
 import { NODE_DEFINITIONS } from "@/lib/strategies/nodes";
 import { executeTool, extractLastAssistantText } from "@/lib/ai/tools";
+import {
+  deleteConversation,
+  listConversations,
+  loadConversationMessages,
+  renameConversation,
+  togglePinConversation,
+} from "@/lib/ai/store";
 import type {
   AiChatResponse,
   AiContentBlock,
+  AiConversationSummary,
   AiMessage,
   AiToolUseBlock,
 } from "@/lib/ai/types";
 import type { StrategyGraph } from "@/lib/strategies/types";
 import { cn } from "@/lib/utils/cn";
+import { formatRelative } from "@/lib/utils/format";
 
 // ──────────────────────────────────────────────────────────────────
-// Zentryx AI panel — slide-out chat that can mutate the builder graph.
-// Available to all tiers (with quotas: free 3 / pro 5 / creator 30/day).
+// Zentryx AI panel v2
+// ──────────────────────────────────────────────────────────────────
+//   • Persisted conversations in `ai_conversations` / `ai_messages`
+//   • Sidebar with recent chats, pin, rename, delete
+//   • "New chat" button
+//   • Markdown-rendered assistant messages (gfm: tables, code blocks)
+//   • Live tool-call bubbles, abort button while AI is working
+//   • Cmd/Ctrl+K opens the panel from anywhere in the builder
 // ──────────────────────────────────────────────────────────────────
 
 interface AiPanelProps {
   graph: StrategyGraph;
-  /** Replace the whole graph — callback into useGraphHistory.set. */
   onGraphReplace: (g: StrategyGraph) => void;
   strategyId: string | null;
-  /** Asked to highlight a node after a tool call — for the builder to center on. */
   onHighlightNode?: (nodeId: string) => void;
 }
 
@@ -50,17 +70,24 @@ type UiMessage =
   | { kind: "tool"; label: string; status: "running" | "ok" | "error"; detail?: string }
   | { kind: "error"; text: string; upgradeTo?: "pro" | "creator" };
 
+type View = "chat" | "history";
+
 export function AiPanel({ graph, onGraphReplace, strategyId, onHighlightNode }: AiPanelProps) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
+  const [view, setView] = useState<View>("chat");
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [uiMessages, setUiMessages] = useState<UiMessage[]>([]);
-  // Raw Anthropic-format history — what we send to the API.
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversationTitle, setConversationTitle] = useState<string>("New chat");
+  const [conversations, setConversations] = useState<AiConversationSummary[]>([]);
+  const [convoLoading, setConvoLoading] = useState(false);
+
   const historyRef = useRef<AiMessage[]>([]);
-  // Keep the latest graph in a ref so we can mutate it synchronously during
-  // a tool-use loop without waiting for React's async state commits.
   const graphRef = useRef(graph);
+  const abortRef = useRef<{ aborted: boolean }>({ aborted: false });
+
   useEffect(() => {
     graphRef.current = graph;
   }, [graph]);
@@ -70,8 +97,86 @@ export function AiPanel({ graph, onGraphReplace, strategyId, onHighlightNode }: 
     scrollerRef.current?.scrollTo({ top: scrollerRef.current.scrollHeight, behavior: "smooth" });
   }, [uiMessages, busy]);
 
-  const nodeTypes = NODE_DEFINITIONS.map((d) => d.type);
+  // Cmd/Ctrl + K to toggle
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
+  // Reload conversations whenever the panel opens or we land on the history view.
+  const refreshConversations = useCallback(async () => {
+    if (!user) return;
+    setConvoLoading(true);
+    try {
+      const list = await listConversations();
+      setConversations(list);
+    } finally {
+      setConvoLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (open) void refreshConversations();
+  }, [open, refreshConversations]);
+
+  const nodeTypes = useMemo(() => NODE_DEFINITIONS.map((d) => d.type), []);
+
+  // ── New chat
+  const startNewChat = useCallback(() => {
+    setConversationId(null);
+    setConversationTitle("New chat");
+    setUiMessages([]);
+    historyRef.current = [];
+    setView("chat");
+  }, []);
+
+  // ── Open historical conversation
+  const openConversation = useCallback(async (summary: AiConversationSummary) => {
+    setConversationId(summary.id);
+    setConversationTitle(summary.title);
+    setUiMessages([{ kind: "assistant", blocks: [{ type: "text", text: "_Loading…_" }] }]);
+    setView("chat");
+    try {
+      const rows = await loadConversationMessages(summary.id);
+      const ui: UiMessage[] = [];
+      const raw: AiMessage[] = [];
+      for (const r of rows) {
+        // Re-hydrate raw history for the model
+        raw.push({ role: r.role, content: r.content as never });
+        // Re-hydrate the visible bubbles
+        if (r.role === "user") {
+          const text = typeof r.content === "string"
+            ? r.content
+            : (r.content as AiContentBlock[]).find((b) => b.type === "text")?.text ?? "";
+          ui.push({ kind: "user", text });
+        } else {
+          const blocks = Array.isArray(r.content) ? (r.content as AiContentBlock[]) : [{ type: "text", text: String(r.content) } as AiContentBlock];
+          // Surface tool_use blocks as compact bubbles
+          for (const b of blocks) {
+            if (b.type === "tool_use") {
+              ui.push({ kind: "tool", label: b.name, status: "ok" });
+            }
+          }
+          if (blocks.some((b) => b.type === "text")) {
+            ui.push({ kind: "assistant", blocks });
+          }
+        }
+      }
+      historyRef.current = raw;
+      setUiMessages(ui);
+    } catch (err) {
+      toast.error(`Could not load conversation: ${(err as Error).message}`);
+      startNewChat();
+    }
+  }, [startNewChat]);
+
+  // ── Send
   const send = useCallback(async () => {
     const text = input.trim();
     if (!text || busy) return;
@@ -83,12 +188,12 @@ export function AiPanel({ graph, onGraphReplace, strategyId, onHighlightNode }: 
     setInput("");
     setUiMessages((m) => [...m, { kind: "user", text }]);
     setBusy(true);
+    abortRef.current = { aborted: false };
 
-    // Append to raw history
     historyRef.current.push({ role: "user", content: text });
 
     try {
-      await runAgenticLoop(
+      const result = await runAgenticLoop(
         historyRef.current,
         graphRef,
         (patch) => {
@@ -97,16 +202,53 @@ export function AiPanel({ graph, onGraphReplace, strategyId, onHighlightNode }: 
         },
         setUiMessages,
         onHighlightNode,
-        { strategyId, nodeTypes },
+        {
+          strategyId,
+          nodeTypes,
+          conversationId,
+          abortRef: abortRef.current,
+        },
       );
+      if (result?.conversationId) {
+        setConversationId(result.conversationId);
+        if (result.conversationTitle) setConversationTitle(result.conversationTitle);
+      }
+      void refreshConversations();
     } catch (err) {
       setUiMessages((m) => [...m, { kind: "error", text: (err as Error).message }]);
     } finally {
       setBusy(false);
     }
-  }, [input, busy, user, onGraphReplace, onHighlightNode, strategyId, nodeTypes]);
+  }, [
+    input, busy, user, onGraphReplace, onHighlightNode,
+    strategyId, nodeTypes, conversationId, refreshConversations,
+  ]);
 
-  // ── Floating trigger (always rendered; panel overlays on top when open)
+  const stop = useCallback(() => {
+    abortRef.current.aborted = true;
+    setBusy(false);
+    setUiMessages((m) => [...m, { kind: "error", text: "Stopped by you." }]);
+  }, []);
+
+  // ── Conversation actions (sidebar)
+  const onPinConversation = useCallback(async (id: string, pinned: boolean) => {
+    await togglePinConversation(id, pinned);
+    void refreshConversations();
+  }, [refreshConversations]);
+
+  const onDeleteConversation = useCallback(async (id: string) => {
+    if (!window.confirm("Delete this conversation? Messages cannot be recovered.")) return;
+    await deleteConversation(id);
+    if (conversationId === id) startNewChat();
+    void refreshConversations();
+  }, [conversationId, refreshConversations, startNewChat]);
+
+  const onRenameConversation = useCallback(async (id: string, title: string) => {
+    await renameConversation(id, title);
+    if (conversationId === id) setConversationTitle(title);
+    void refreshConversations();
+  }, [conversationId, refreshConversations]);
+
   return (
     <>
       <button
@@ -116,6 +258,7 @@ export function AiPanel({ graph, onGraphReplace, strategyId, onHighlightNode }: 
       >
         <Sparkles size={16} />
         <span className="text-sm font-700">Ask AI</span>
+        <kbd className="ml-1 hidden md:inline-block text-[9px] font-700 text-emerald-100 border border-emerald-300/40 rounded px-1">⌘K</kbd>
       </button>
 
       <AnimatePresence>
@@ -126,72 +269,276 @@ export function AiPanel({ graph, onGraphReplace, strategyId, onHighlightNode }: 
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 280 }}
-            className="fixed top-0 right-0 h-screen w-full sm:w-[420px] bg-white border-l border-gray-200 shadow-2xl z-50 flex flex-col"
+            className="fixed top-0 right-0 h-screen w-full sm:w-[440px] bg-white border-l border-gray-200 shadow-2xl z-50 flex flex-col"
           >
-            <header className="flex items-center justify-between px-4 h-14 border-b border-gray-100 bg-gradient-to-r from-emerald-500/5 via-white to-white">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 text-white flex items-center justify-center shadow">
-                  <Sparkles size={15} />
-                </div>
-                <div className="leading-tight">
-                  <div className="text-sm font-700 text-gray-900">Zentryx AI</div>
-                  <div className="text-[10px] text-gray-400">Builds, debugs, explains</div>
+            {/* Header */}
+            <header className="flex items-center justify-between px-4 h-14 border-b border-gray-100 bg-gradient-to-r from-emerald-500/5 via-white to-white shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                {view === "history" ? (
+                  <button
+                    onClick={() => setView("chat")}
+                    className="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-500 flex items-center justify-center"
+                    aria-label="Back to chat"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                ) : (
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 text-white flex items-center justify-center shadow shrink-0">
+                    <Sparkles size={15} />
+                  </div>
+                )}
+                <div className="leading-tight min-w-0">
+                  <div className="text-sm font-700 text-gray-900 truncate">
+                    {view === "history" ? "All conversations" : conversationTitle}
+                  </div>
+                  <div className="text-[10px] text-gray-400 truncate">
+                    {view === "history"
+                      ? `${conversations.length} chat${conversations.length === 1 ? "" : "s"}`
+                      : conversationId ? "Saved · resumes on reload" : "New chat — not saved yet"}
+                  </div>
                 </div>
               </div>
-              <button
-                onClick={() => setOpen(false)}
-                className="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-500 flex items-center justify-center"
-              >
-                <X size={15} />
-              </button>
+              <div className="flex items-center gap-0.5">
+                {view === "chat" && (
+                  <>
+                    <button
+                      onClick={() => setView("history")}
+                      className="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-500 flex items-center justify-center"
+                      title="Conversation history"
+                    >
+                      <History size={15} />
+                    </button>
+                    <button
+                      onClick={startNewChat}
+                      className="w-8 h-8 rounded-lg hover:bg-emerald-50 text-emerald-600 flex items-center justify-center"
+                      title="New chat"
+                    >
+                      <Plus size={15} />
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={() => setOpen(false)}
+                  className="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-500 flex items-center justify-center"
+                >
+                  <X size={15} />
+                </button>
+              </div>
             </header>
 
-            <div ref={scrollerRef} className="flex-1 overflow-y-auto p-4 space-y-3">
-              {uiMessages.length === 0 && !busy ? <Welcome onPick={setInput} /> : null}
-              {uiMessages.map((m, i) => (
-                <MessageBubble key={i} m={m} />
-              ))}
-              {busy && (
-                <div className="flex items-center gap-2 text-xs text-gray-400">
-                  <Loader2 size={12} className="animate-spin" /> Thinking…
+            {/* Body */}
+            {view === "history" ? (
+              <ConversationsList
+                conversations={conversations}
+                loading={convoLoading}
+                activeId={conversationId}
+                onOpen={openConversation}
+                onPin={onPinConversation}
+                onDelete={onDeleteConversation}
+                onRename={onRenameConversation}
+                onNewChat={startNewChat}
+              />
+            ) : (
+              <>
+                <div ref={scrollerRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+                  {uiMessages.length === 0 && !busy ? <Welcome onPick={setInput} /> : null}
+                  {uiMessages.map((m, i) => (
+                    <MessageBubble key={i} m={m} />
+                  ))}
+                  {busy && (
+                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                      <Loader2 size={12} className="animate-spin" /> Thinking…
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            <footer className="border-t border-gray-100 p-3 bg-white">
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void send();
-                }}
-                className="flex items-end gap-2"
-              >
-                <textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
+                {/* Composer */}
+                <footer className="border-t border-gray-100 p-3 bg-white shrink-0">
+                  <form
+                    onSubmit={(e) => {
                       e.preventDefault();
                       void send();
-                    }
-                  }}
-                  placeholder="Add an RSI filter, fix the errors, change to H1…"
-                  rows={2}
-                  className="flex-1 resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-500/15"
-                />
-                <Button type="submit" size="sm" disabled={busy || !input.trim()}>
-                  <Send size={13} />
-                </Button>
-              </form>
-              <div className="mt-2 flex items-center justify-between text-[10px] text-gray-400">
-                <span>Claude Sonnet 4.6 · Zentryx-tuned</span>
-                <span>Enter to send · Shift+Enter = newline</span>
-              </div>
-            </footer>
+                    }}
+                    className="flex items-end gap-2"
+                  >
+                    <textarea
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          void send();
+                        }
+                      }}
+                      placeholder="Add an RSI filter, fix the errors, change to H1…"
+                      rows={2}
+                      className="flex-1 resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:border-emerald-300 focus:ring-2 focus:ring-emerald-500/15"
+                    />
+                    {busy ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        onClick={stop}
+                        title="Stop the AI"
+                      >
+                        <Square size={13} />
+                      </Button>
+                    ) : (
+                      <Button type="submit" size="sm" disabled={!input.trim()}>
+                        <Send size={13} />
+                      </Button>
+                    )}
+                  </form>
+                  <div className="mt-2 flex items-center justify-between text-[10px] text-gray-400">
+                    <span>Claude Sonnet 4.6 · Zentryx-tuned</span>
+                    <span>Enter to send · Shift+Enter = newline</span>
+                  </div>
+                </footer>
+              </>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Conversations list view (history)
+// ──────────────────────────────────────────────────────────────────
+function ConversationsList({
+  conversations,
+  loading,
+  activeId,
+  onOpen,
+  onPin,
+  onDelete,
+  onRename,
+  onNewChat,
+}: {
+  conversations: AiConversationSummary[];
+  loading: boolean;
+  activeId: string | null;
+  onOpen: (c: AiConversationSummary) => void;
+  onPin: (id: string, pinned: boolean) => void;
+  onDelete: (id: string) => void;
+  onRename: (id: string, title: string) => void;
+  onNewChat: () => void;
+}) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+
+  function startEdit(c: AiConversationSummary) {
+    setEditingId(c.id);
+    setEditValue(c.title);
+  }
+  async function commitEdit(id: string) {
+    if (editValue.trim()) await onRename(id, editValue.trim());
+    setEditingId(null);
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto p-3">
+      <button
+        onClick={onNewChat}
+        className="w-full flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50 text-emerald-700 px-3 py-2.5 text-sm font-700 mb-3 transition-colors"
+      >
+        <Plus size={14} /> New chat
+      </button>
+
+      {loading ? (
+        <div className="text-xs text-gray-400 text-center py-8">Loading…</div>
+      ) : conversations.length === 0 ? (
+        <div className="text-xs text-gray-400 text-center py-12">
+          No conversations yet. Start one!
+        </div>
+      ) : (
+        <ul className="space-y-1">
+          {conversations.map((c) => {
+            const active = c.id === activeId;
+            const editing = c.id === editingId;
+            return (
+              <li key={c.id}>
+                <div
+                  className={cn(
+                    "group flex items-start gap-2 rounded-lg px-2.5 py-2 cursor-pointer transition-colors",
+                    active ? "bg-emerald-50 ring-1 ring-emerald-200" : "hover:bg-gray-100",
+                  )}
+                  onClick={() => !editing && onOpen(c)}
+                >
+                  <div className="flex-1 min-w-0">
+                    {editing ? (
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          void commitEdit(c.id);
+                        }}
+                        className="flex items-center gap-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          autoFocus
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={() => void commitEdit(c.id)}
+                          className="flex-1 text-xs rounded border border-emerald-300 px-2 py-1 focus:outline-none"
+                        />
+                        <button
+                          type="submit"
+                          className="text-emerald-600 hover:bg-emerald-100 rounded p-1"
+                        >
+                          <Check size={12} />
+                        </button>
+                      </form>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        {c.pinned && <Pin size={9} className="text-emerald-600 shrink-0" />}
+                        <span className="text-[12px] font-600 text-gray-900 truncate">{c.title}</span>
+                      </div>
+                    )}
+                    <div className="text-[10px] text-gray-400 mt-0.5">
+                      {formatRelative(c.lastMessageAt)} · {c.messageCount} msg
+                    </div>
+                  </div>
+                  {!editing && (
+                    <div
+                      className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        onClick={() => onPin(c.id, !c.pinned)}
+                        className="p-1 hover:bg-gray-200 rounded"
+                        title={c.pinned ? "Unpin" : "Pin"}
+                      >
+                        <Pin
+                          size={11}
+                          className={c.pinned ? "fill-emerald-500 text-emerald-500" : "text-gray-400"}
+                        />
+                      </button>
+                      <button
+                        onClick={() => startEdit(c)}
+                        className="p-1 hover:bg-gray-200 rounded text-gray-400"
+                        title="Rename"
+                      >
+                        <Pencil size={11} />
+                      </button>
+                      <button
+                        onClick={() => onDelete(c.id)}
+                        className="p-1 hover:bg-red-100 rounded text-gray-400 hover:text-red-600"
+                        title="Delete"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -210,8 +557,9 @@ function Welcome({ onPick }: { onPick: (q: string) => void }) {
         </div>
         <p className="mt-1.5 text-[12px] text-emerald-900/80 leading-relaxed">
           I can read your graph, add or reconfigure nodes, fix validation
-          errors, and explain the MQL5 output. Every change I make shows up
-          live on your canvas.
+          errors, and explain the MQL5 output. Every change shows up live on
+          your canvas. Conversations are saved — open them later from the
+          history button.
         </p>
       </div>
       <div className="mt-3 space-y-1.5">
@@ -236,7 +584,7 @@ function MessageBubble({ m }: { m: UiMessage }) {
   if (m.kind === "user") {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-emerald-500 text-white px-3.5 py-2 text-sm leading-snug">
+        <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-emerald-500 text-white px-3.5 py-2 text-sm leading-snug whitespace-pre-wrap">
           {m.text}
         </div>
       </div>
@@ -250,8 +598,6 @@ function MessageBubble({ m }: { m: UiMessage }) {
         <div className="max-w-[88%] rounded-2xl rounded-tl-sm bg-gray-100 text-gray-900 px-3.5 py-2 text-sm leading-snug zx-md">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
-            // Override the default block elements with chat-friendly styling.
-            // No `prose` class because we don't ship the typography plugin.
             components={{
               p: ({ children }) => <p className="my-1 first:mt-0 last:mb-0">{children}</p>,
               h1: ({ children }) => <h3 className="mt-3 mb-1 text-[13px] font-700">{children}</h3>,
@@ -344,9 +690,7 @@ function MessageBubble({ m }: { m: UiMessage }) {
 }
 
 // ──────────────────────────────────────────────────────────────────
-// Agentic loop: send → assistant returns tool_use blocks → apply
-// them locally → send tool_result back → repeat until "done" or no
-// more tool calls. Each step shows up live in the chat and canvas.
+// Agentic loop — supports conversation_id passthrough + abort
 // ──────────────────────────────────────────────────────────────────
 async function runAgenticLoop(
   history: AiMessage[],
@@ -354,24 +698,28 @@ async function runAgenticLoop(
   replace: (g: StrategyGraph) => void,
   setUi: React.Dispatch<React.SetStateAction<UiMessage[]>>,
   onHighlight: ((nodeId: string) => void) | undefined,
-  opts: { strategyId: string | null; nodeTypes: string[] },
-) {
+  opts: {
+    strategyId: string | null;
+    nodeTypes: string[];
+    conversationId: string | null;
+    abortRef: { aborted: boolean };
+  },
+): Promise<{ conversationId: string; conversationTitle?: string } | null> {
   const supabase = getSupabase();
   const sess = await supabase.auth.getSession();
   const accessToken = sess.data.session?.access_token;
   if (!accessToken) throw new Error("Not signed in.");
 
-  // Safety rail — prevent infinite loops if the model misbehaves.
-  // 40 lets the AI plan a multi-node strategy + fix validation + reconnect
-  // edges in a single turn; complex grids hit ~25 round-trips.
   const MAX_STEPS = 40;
+  let activeConvoId = opts.conversationId;
+  let firstTitle: string | undefined;
+
   for (let step = 0; step < MAX_STEPS; step++) {
+    if (opts.abortRef.aborted) return activeConvoId ? { conversationId: activeConvoId, conversationTitle: firstTitle } : null;
+
     let data: AiChatResponse | null = null;
     let lastErr: string | null = null;
 
-    // Retry once on transient failures (Netlify cold start, dropped TCP,
-    // HTML error page from a function timeout, etc.). Two attempts is
-    // enough — anything more is a real outage and the user should retry.
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const res = await fetch("/.netlify/functions/ai-chat", {
@@ -385,17 +733,15 @@ async function runAgenticLoop(
             graph: graphRef.current,
             nodeTypes: opts.nodeTypes,
             strategyId: opts.strategyId,
+            conversationId: activeConvoId,
           }),
         });
         const ct = res.headers.get("content-type") ?? "";
         const raw = await res.text();
         if (!ct.includes("application/json")) {
-          // Function crashed / timed out → Netlify served an HTML error page.
-          // Parsing that as JSON would throw the cryptic "Unexpected token '<'"
-          // message the user saw. Surface a clean error instead.
           throw new Error(
             res.status === 504 || res.status === 408
-              ? "AI request timed out (Netlify limit). Try a smaller/simpler request, or split it into steps."
+              ? "AI request timed out (Netlify limit). Try a smaller request, or split into steps."
               : `Server returned a non-JSON response (status ${res.status}). It usually means the function timed out.`,
           );
         }
@@ -404,7 +750,6 @@ async function runAgenticLoop(
       } catch (err) {
         lastErr = (err as Error).message;
         if (attempt === 0) {
-          // Brief backoff then retry once
           await new Promise((r) => setTimeout(r, 500));
           continue;
         }
@@ -412,14 +757,8 @@ async function runAgenticLoop(
     }
 
     if (!data) {
-      setUi((m) => [
-        ...m,
-        {
-          kind: "error",
-          text: lastErr ?? "AI request failed. Try again.",
-        },
-      ]);
-      return;
+      setUi((m) => [...m, { kind: "error", text: lastErr ?? "AI request failed. Try again." }]);
+      return activeConvoId ? { conversationId: activeConvoId, conversationTitle: firstTitle } : null;
     }
     if (!data.ok) {
       setUi((m) => [
@@ -430,28 +769,32 @@ async function runAgenticLoop(
           upgradeTo: (data as { upgradeTo?: "pro" | "creator" }).upgradeTo,
         },
       ]);
-      return;
+      return activeConvoId ? { conversationId: activeConvoId, conversationTitle: firstTitle } : null;
+    }
+
+    if (!activeConvoId && data.conversationId) {
+      activeConvoId = data.conversationId;
+      firstTitle = data.conversationTitle;
     }
 
     const assistant = data.assistant;
     history.push({ role: "assistant", content: assistant });
 
-    // Render the assistant's text portion if any
     if (assistant.some((b) => b.type === "text")) {
       setUi((m) => [...m, { kind: "assistant", blocks: assistant }]);
     }
 
-    const toolUses = assistant.filter(
-      (b): b is AiToolUseBlock => b.type === "tool_use",
-    );
-    if (toolUses.length === 0) return; // nothing to execute
+    const toolUses = assistant.filter((b): b is AiToolUseBlock => b.type === "tool_use");
+    if (toolUses.length === 0) {
+      return { conversationId: activeConvoId!, conversationTitle: firstTitle };
+    }
 
-    // Apply each tool call and collect tool_result blocks for the next turn
     const toolResults: AiMessage["content"] = [];
     let doneMsg: string | null = null;
     for (const use of toolUses) {
+      if (opts.abortRef.aborted) break;
       setUi((m) => [...m, { kind: "tool", label: use.name, status: "running" }]);
-      await new Promise((r) => setTimeout(r, 120)); // small visible delay
+      await new Promise((r) => setTimeout(r, 120));
 
       const outcome = executeTool(use, graphRef.current);
       graphRef.current = outcome.graph;
@@ -459,7 +802,6 @@ async function runAgenticLoop(
       if (outcome.highlightNodeId) onHighlight?.(outcome.highlightNodeId);
 
       setUi((m) => {
-        // Mutate the last tool bubble to its final status
         const next = [...m];
         for (let i = next.length - 1; i >= 0; i--) {
           if (next[i].kind === "tool" && (next[i] as { status: string }).status === "running") {
@@ -482,22 +824,16 @@ async function runAgenticLoop(
         is_error: outcome.isError,
       } as never);
 
-      if (outcome.finished && outcome.doneMessage) {
-        doneMsg = outcome.doneMessage;
-      }
+      if (outcome.finished && outcome.doneMessage) doneMsg = outcome.doneMessage;
     }
 
-    // Feed tool results back to the model
     history.push({ role: "user", content: toolResults as never });
-
-    if (doneMsg) {
-      // Stop: AI signalled completion
-      return;
-    }
+    if (doneMsg) return { conversationId: activeConvoId!, conversationTitle: firstTitle };
   }
 
   setUi((m) => [
     ...m,
     { kind: "error", text: "AI hit the step limit. Ask again with a smaller request." },
   ]);
+  return activeConvoId ? { conversationId: activeConvoId, conversationTitle: firstTitle } : null;
 }

@@ -207,7 +207,13 @@ export default async (req: Request, _ctx: Context) => {
   }
 
   // ── Parse request
-  let body: { messages: unknown; graph: unknown; nodeTypes: unknown; strategyId?: string | null };
+  let body: {
+    messages: unknown;
+    graph: unknown;
+    nodeTypes: unknown;
+    strategyId?: string | null;
+    conversationId?: string | null;
+  };
   try {
     body = await req.json();
   } catch {
@@ -218,6 +224,38 @@ export default async (req: Request, _ctx: Context) => {
   const graph = body.graph ?? {};
   const nodeTypes = Array.isArray(body.nodeTypes) ? (body.nodeTypes as string[]) : [];
   const strategyId = typeof body.strategyId === "string" ? body.strategyId : null;
+  let conversationId = typeof body.conversationId === "string" ? body.conversationId : null;
+  let conversationTitle: string | undefined;
+
+  // Resolve / create the conversation record before calling Claude so we
+  // have an id to attach to ai_messages even if the call fails.
+  if (!conversationId) {
+    const firstUser = messages.find((m) => m.role === "user");
+    const titleSource =
+      typeof firstUser?.content === "string"
+        ? firstUser.content
+        : Array.isArray(firstUser?.content)
+          ? (firstUser.content.find((b) => b.type === "text") as { text?: string } | undefined)?.text
+          : undefined;
+    conversationTitle = (titleSource ?? "New chat").slice(0, 80);
+    const { data: convo, error: convoErr } = await admin
+      .from("ai_conversations")
+      .insert({
+        user_id: user.id,
+        strategy_id: strategyId,
+        title: conversationTitle,
+      })
+      .select("id")
+      .single();
+    if (convoErr || !convo) {
+      return json({
+        ok: false,
+        error: "ai_failed",
+        message: `Could not create conversation: ${convoErr?.message ?? "unknown"}`,
+      }, 500);
+    }
+    conversationId = convo.id;
+  }
 
   const anthropic = new Anthropic({ apiKey: ANTHROPIC_KEY });
 
@@ -261,18 +299,35 @@ export default async (req: Request, _ctx: Context) => {
         {
           user_id: user.id,
           strategy_id: strategyId,
+          conversation_id: conversationId,
           role: "user",
           content: lastUser.content as never,
         },
         {
           user_id: user.id,
           strategy_id: strategyId,
+          conversation_id: conversationId,
           role: "assistant",
           content: response.content as never,
           tokens_in: response.usage.input_tokens,
           tokens_out: response.usage.output_tokens,
         },
       ]);
+      // Bump the conversation's last_message_at + counter so the sidebar
+      // can sort by recency without an aggregate query.
+      await admin.rpc("bump_ai_conversation", {
+        p_conversation_id: conversationId,
+      }).then(
+        () => undefined,
+        // RPC may not exist (we'll add a fallback below); ignore failure.
+        () => undefined,
+      );
+      await admin
+        .from("ai_conversations")
+        .update({
+          last_message_at: new Date().toISOString(),
+        })
+        .eq("id", conversationId);
     }
 
     return json({
@@ -281,6 +336,8 @@ export default async (req: Request, _ctx: Context) => {
       stopReason: response.stop_reason,
       remaining: quota.limit - (used + 1),
       quota: { type: quota.kind, used: used + 1, limit: quota.limit },
+      conversationId,
+      conversationTitle,
     });
   } catch (err) {
     const message = (err as Error).message ?? "Unknown";
