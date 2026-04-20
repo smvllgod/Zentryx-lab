@@ -133,6 +133,47 @@ export const NODE_DEFINITIONS: NodeDefinition[] = [
     ],
   },
   {
+    type: "entry.candleOpen",
+    category: "entry",
+    subcategory: "price-action",
+    label: "Candle Open Follow",
+    summary: "Open in the direction of the just-closed candle.",
+    longDescription:
+      "On every new bar, open a trade in the direction the previous candle closed. Bullish candle → long. Bearish candle → short. No indicators, no confirmation — pure momentum continuation. Set a minimum body size to filter out dojis.",
+    userExplanation:
+      "The fastest possible entry. Pair with strong stops or a grid / martingale block to handle the miss rate.",
+    plan: "free", status: "active", tags: ["price-action", "momentum", "continuation"],
+    params: [
+      directionSelect,
+      { key: "minBodyPips", label: "Minimum candle body", kind: "number", default: 0, min: 0, unit: "pips" },
+    ],
+  },
+  {
+    type: "entry.randomPosition",
+    category: "entry",
+    subcategory: "seeder",
+    label: "Random Position Seeder",
+    summary: "Open a random trade the moment the EA loads.",
+    longDescription:
+      "Fires exactly once: on the first new bar after attachment, open a random (or fixed) direction without checking any filters. The trigger then shuts off permanently. Designed as the initial leg for grid / martingale / basket systems that need something to build on.",
+    userExplanation:
+      "When you're running a grid or martingale, you don't need a clever entry — you just need a starting trade. This block gives you exactly that, with no setup.",
+    plan: "pro", status: "active", tags: ["seeder", "grid", "martingale", "basket"],
+    params: [
+      {
+        key: "mode",
+        label: "Direction",
+        kind: "select",
+        default: "random",
+        options: [
+          { value: "random", label: "Random (50/50)" },
+          { value: "long",   label: "Always long" },
+          { value: "short",  label: "Always short" },
+        ],
+      },
+    ],
+  },
+  {
     type: "entry.macdCross",
     category: "entry",
     subcategory: "crossover",

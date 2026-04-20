@@ -8,6 +8,8 @@ import { translate_entry_macdCross } from "./entry-macdCross";
 import { translate_entry_stochCross } from "./entry-stochCross";
 import { translate_entry_rsiExtreme } from "./entry-rsiExtreme";
 import { translate_entry_donchianBreakout } from "./entry-donchianBreakout";
+import { translate_entry_candleOpen } from "./entry-candleOpen";
+import { translate_entry_randomPosition } from "./entry-randomPosition";
 
 import { translate_filter_rsi } from "./filter-rsi";
 import { translate_filter_rsiBand } from "./filter-rsiBand";
@@ -99,6 +101,8 @@ export const TRANSLATORS: Partial<Record<NodeType, Translator>> = {
   "entry.stochCross": translate_entry_stochCross,
   "entry.rsiExtreme": translate_entry_rsiExtreme,
   "entry.donchianBreakout": translate_entry_donchianBreakout,
+  "entry.candleOpen": translate_entry_candleOpen,
+  "entry.randomPosition": translate_entry_randomPosition,
 
   // Filters / confirmations / session / exec / vol
   "filter.rsi": translate_filter_rsi,

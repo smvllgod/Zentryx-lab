@@ -375,6 +375,11 @@ export function buildEvaluator(graph: StrategyGraph, bars: Bar[], symbol: string
   const diagnostics: BacktestDiagnostic[] = [];
   const warnedTypes = new Set<string>();
 
+  // Per-run state for entry.randomPosition. The node is one-shot per
+  // EA lifetime (first bar → open → mute), so each simulation reuses
+  // the same rolled direction across every bar.
+  const randomState = new Map<string, { dir: 0 | 1; fired: boolean }>();
+
   function warnUnsupported(node: StrategyNode, reason: string) {
     if (warnedTypes.has(node.type)) return;
     warnedTypes.add(node.type);
@@ -542,6 +547,48 @@ export function buildEvaluator(graph: StrategyGraph, bars: Bar[], symbol: string
           if (i > 1) {
             fireL = bars[i - 1].close > bars[i - 2].high;
             fireS = bars[i - 1].close < bars[i - 2].low;
+          }
+          break;
+        }
+        case "entry.candleOpen": {
+          // Bullish-candle → long, bearish-candle → short, on the
+          // first tick of the new bar. i=0 skipped (no prev bar).
+          if (i >= 1) {
+            const prev = bars[i - 1];
+            const body = Math.abs(prev.close - prev.open);
+            const minBody = ((p.minBodyPips as number) ?? 0) * pipSize;
+            if (body >= minBody) {
+              fireL = prev.close > prev.open;
+              fireS = prev.close < prev.open;
+            }
+          }
+          break;
+        }
+        case "entry.randomPosition": {
+          // One-shot: roll on first evaluation, cache, and stop firing
+          // once the trade has been dispatched (runner flips fired when
+          // it sees wantLong/Short translate into an open).
+          const mode = (p.mode as string) ?? "random";
+          let state = randomState.get(n.id);
+          if (!state) {
+            // Deterministic seed based on node id so the same backtest
+            // rerun produces the same direction — essential for
+            // comparable strategy metrics.
+            const dir: 0 | 1 =
+              mode === "long" ? 0
+              : mode === "short" ? 1
+              : (hashString(n.id) & 1) as 0 | 1;
+            state = { dir, fired: false };
+            randomState.set(n.id, state);
+          }
+          if (!state.fired) {
+            fireL = state.dir === 0;
+            fireS = state.dir === 1;
+            // Optimistically mark fired — if the trade doesn't actually
+            // open (e.g. insufficient margin), we still don't want to
+            // keep re-attempting every bar. Matches the MQL5 helper's
+            // behaviour.
+            state.fired = true;
           }
           break;
         }
@@ -1088,4 +1135,13 @@ export function buildEvaluator(graph: StrategyGraph, bars: Bar[], symbol: string
   }
 
   return { evaluateBar, diagnostics, cache };
+}
+
+// Tiny deterministic string → int hash (djb2). Used by
+// entry.randomPosition to seed its direction from the node id so the
+// same backtest rerun always produces the same direction.
+function hashString(s: string): number {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = (h * 33) ^ s.charCodeAt(i);
+  return h >>> 0;
 }

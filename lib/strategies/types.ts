@@ -24,6 +24,8 @@ export type NodeType =
   | "entry.emaCross"
   | "entry.smaCross"
   | "entry.previousCandle"
+  | "entry.candleOpen"
+  | "entry.randomPosition"
   | "entry.macdCross"
   | "entry.stochCross"
   | "entry.bollingerBreak"
