@@ -906,13 +906,54 @@ async function runAgenticLoop(
   let activeConvoId = opts.conversationId;
   let firstTitle: string | undefined;
 
+  // Reusable backoff helper — used by rate-limit, upstream timeout, and
+  // upstream busy paths. Shows a "Pacing the AI — resuming in Ns" chip
+  // that ticks down each second and can be cancelled by the user's
+  // Stop button. Returns false if aborted, true if the wait completed.
+  const backoff = async (waitSec: number): Promise<boolean> => {
+    const wait = Math.max(1, Math.min(30, waitSec));
+    setUi((m) => [...m, { kind: "throttled", secondsLeft: wait }]);
+    for (let remaining = wait; remaining > 0; remaining--) {
+      if (opts.abortRef.aborted) {
+        setUi((m) => m.filter((x) => x.kind !== "throttled"));
+        return false;
+      }
+      setUi((m) => {
+        const next = [...m];
+        for (let i = next.length - 1; i >= 0; i--) {
+          if (next[i].kind === "throttled") {
+            next[i] = { kind: "throttled", secondsLeft: remaining };
+            break;
+          }
+        }
+        return next;
+      });
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    setUi((m) => m.filter((x, i, arr) => !(x.kind === "throttled" && i === arr.length - 1)));
+    return true;
+  };
+
   for (let step = 0; step < MAX_STEPS; step++) {
     if (opts.abortRef.aborted) return activeConvoId ? { conversationId: activeConvoId, conversationTitle: firstTitle } : null;
 
+    // Per-step retry loop. Covers three recoverable situations:
+    //   - rate_limited      (our burst limiter tripped)
+    //   - upstream_timeout  (our own abort before Netlify 504)
+    //   - upstream_busy     (Anthropic 429/529 upstream)
+    //   - raw 504/408       (Netlify killed us before our server-side
+    //                        abort fired — still auto-retried)
+    // A single step tolerates up to MAX_STEP_RETRIES backoffs; past
+    // that we surface the error so the user isn't stuck in a loop.
+    const MAX_STEP_RETRIES = 3;
     let data: AiChatResponse | null = null;
     let lastErr: string | null = null;
+    let retries = 0;
 
-    for (let attempt = 0; attempt < 2; attempt++) {
+    while (retries <= MAX_STEP_RETRIES) {
+      if (opts.abortRef.aborted) {
+        return activeConvoId ? { conversationId: activeConvoId, conversationTitle: firstTitle } : null;
+      }
       try {
         const res = await fetch("/.netlify/functions/ai-chat", {
           method: "POST",
@@ -930,21 +971,48 @@ async function runAgenticLoop(
         });
         const ct = res.headers.get("content-type") ?? "";
         const raw = await res.text();
+
+        // Netlify killed us before the server could return structured
+        // JSON. Treat 504/408 as recoverable (auto-retry with backoff),
+        // anything else as a hard failure.
         if (!ct.includes("application/json")) {
+          if ((res.status === 504 || res.status === 408) && retries < MAX_STEP_RETRIES) {
+            retries++;
+            if (!(await backoff(3))) {
+              return activeConvoId ? { conversationId: activeConvoId, conversationTitle: firstTitle } : null;
+            }
+            continue;
+          }
           throw new Error(
             res.status === 504 || res.status === 408
-              ? "AI request timed out (Netlify limit). Try a smaller request, or split into steps."
-              : `Server returned a non-JSON response (status ${res.status}). It usually means the function timed out.`,
+              ? "AI request timed out repeatedly. Try a smaller request, or split into steps."
+              : `Server returned a non-JSON response (status ${res.status}).`,
           );
         }
-        data = JSON.parse(raw) as AiChatResponse;
+
+        const parsed = JSON.parse(raw) as AiChatResponse;
+
+        // Server-reported recoverable codes — auto-retry silently.
+        if (
+          !parsed.ok &&
+          (parsed.error === "rate_limited" ||
+            parsed.error === "upstream_timeout" ||
+            parsed.error === "upstream_busy") &&
+          retries < MAX_STEP_RETRIES
+        ) {
+          retries++;
+          const waitSec = parsed.retryAfterSec ?? (parsed.error === "upstream_busy" ? 5 : 3);
+          if (!(await backoff(waitSec))) {
+            return activeConvoId ? { conversationId: activeConvoId, conversationTitle: firstTitle } : null;
+          }
+          continue;
+        }
+
+        data = parsed;
         break;
       } catch (err) {
         lastErr = (err as Error).message;
-        if (attempt === 0) {
-          await new Promise((r) => setTimeout(r, 500));
-          continue;
-        }
+        break;
       }
     }
 
@@ -953,39 +1021,6 @@ async function runAgenticLoop(
       return activeConvoId ? { conversationId: activeConvoId, conversationTitle: firstTitle } : null;
     }
     if (!data.ok) {
-      // Burst rate-limit: the server is asking us to back off for a few
-      // seconds. In a long agentic build this is normal when Claude
-      // fires many tool_use turns back-to-back. Auto-retry silently
-      // with a live countdown chip instead of surfacing an error —
-      // quota_exceeded / ai_failed / unauthorized still hard-fail.
-      if (data.error === "rate_limited") {
-        const wait = Math.max(1, Math.min(60, (data as { retryAfterSec?: number }).retryAfterSec ?? 5));
-        // Push a throttled chip and tick it down each second.
-        setUi((m) => [...m, { kind: "throttled", secondsLeft: wait }]);
-        for (let remaining = wait; remaining > 0; remaining--) {
-          if (opts.abortRef.aborted) {
-            return activeConvoId ? { conversationId: activeConvoId, conversationTitle: firstTitle } : null;
-          }
-          // Mutate the last throttled chip in place so the countdown
-          // animates without scrolling the transcript.
-          setUi((m) => {
-            const next = [...m];
-            for (let i = next.length - 1; i >= 0; i--) {
-              if (next[i].kind === "throttled") {
-                next[i] = { kind: "throttled", secondsLeft: remaining };
-                break;
-              }
-            }
-            return next;
-          });
-          await new Promise((r) => setTimeout(r, 1000));
-        }
-        // Drop the chip, then redo this step. `step` isn't incremented
-        // because the `for (step)` loop only advances on normal flow.
-        setUi((m) => m.filter((x, i, arr) => !(x.kind === "throttled" && i === arr.length - 1)));
-        step--;
-        continue;
-      }
       setUi((m) => [
         ...m,
         {

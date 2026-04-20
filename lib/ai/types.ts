@@ -85,10 +85,15 @@ export interface AiChatErrorResponse {
     | "ai_failed"
     | "bad_request"
     | "tier_not_allowed"
-    | "rate_limited";
+    | "rate_limited"
+    | "upstream_timeout"
+    | "upstream_busy";
   message: string;
   upgradeTo?: "pro" | "creator";
-  /** Seconds until the burst limiter releases. Only set on error="rate_limited". */
+  /**
+   * Seconds the client should wait before retrying. Set on the
+   * recoverable codes: rate_limited, upstream_timeout, upstream_busy.
+   */
   retryAfterSec?: number;
 }
 

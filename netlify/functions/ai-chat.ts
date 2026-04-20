@@ -351,22 +351,35 @@ export default async (req: Request, _ctx: Context) => {
   const staticSystem = buildStaticSystem(nodeTypes);
   const dynamicSystem = buildDynamicContext(graph);
 
+  // Abort the Claude call ourselves a few seconds before Netlify would
+  // kill the function (60s in netlify.toml). This lets us return a
+  // clean `error: "upstream_timeout"` JSON to the client instead of
+  // the generic non-JSON 504 Netlify falls back to — the client
+  // recognises the code and auto-retries.
+  const UPSTREAM_BUDGET_MS = 50_000;
+  const upstreamAbort = new AbortController();
+  const abortTimer = setTimeout(() => upstreamAbort.abort(), UPSTREAM_BUDGET_MS);
+
   try {
-    const response = await anthropic.messages.create({
-      model: MODEL,
-      // Smaller max_tokens keeps each Claude turn fast, which matters because
-      // Netlify free-tier sync functions cap around 10s. Tool-heavy turns rarely
-      // need more than ~800 tokens of assistant text.
-      max_tokens: 1200,
-      system: [
-        // Cached: stable across turns, pays per-request only when changed
-        { type: "text", text: staticSystem, cache_control: { type: "ephemeral" } },
-        // Not cached: current graph snapshot
-        { type: "text", text: dynamicSystem },
-      ],
-      tools: TOOLS,
-      messages,
-    });
+    const response = await anthropic.messages.create(
+      {
+        model: MODEL,
+        // Smaller max_tokens keeps each Claude turn fast, which matters because
+        // Netlify free-tier sync functions cap around 10s. Tool-heavy turns rarely
+        // need more than ~800 tokens of assistant text.
+        max_tokens: 1200,
+        system: [
+          // Cached: stable across turns, pays per-request only when changed
+          { type: "text", text: staticSystem, cache_control: { type: "ephemeral" } },
+          // Not cached: current graph snapshot
+          { type: "text", text: dynamicSystem },
+        ],
+        tools: TOOLS,
+        messages,
+      },
+      { signal: upstreamAbort.signal },
+    );
+    clearTimeout(abortTimer);
 
     // ── Increment usage (atomic upsert)
     const nextLifetime = lifetimeCountNow + 1;
@@ -415,8 +428,47 @@ export default async (req: Request, _ctx: Context) => {
       conversationTitle,
     });
   } catch (err) {
-    const message = (err as Error).message ?? "Unknown";
-    return json({ ok: false, error: "ai_failed", message: `Claude call failed: ${message}` }, 502);
+    clearTimeout(abortTimer);
+    const e = err as Error & { name?: string; status?: number };
+    // Our own abort — signal to the client with a specific code it can
+    // backoff-retry. Status 504 triggers the client's timeout path.
+    if (e.name === "AbortError" || upstreamAbort.signal.aborted) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: "upstream_timeout",
+          message: "The AI took too long to respond. Retry in a moment — or split the request into smaller steps.",
+          retryAfterSec: 3,
+        }),
+        {
+          status: 504,
+          headers: {
+            "content-type": "application/json",
+            "retry-after": "3",
+          },
+        },
+      );
+    }
+    // Anthropic-level 429 or 529 (overloaded) — bubble it up so the
+    // client backs off instead of hard-failing the whole build.
+    if (e.status === 429 || e.status === 529) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: "upstream_busy",
+          message: "The AI is rate-limited upstream. Retrying in a few seconds…",
+          retryAfterSec: 5,
+        }),
+        {
+          status: 429,
+          headers: {
+            "content-type": "application/json",
+            "retry-after": "5",
+          },
+        },
+      );
+    }
+    return json({ ok: false, error: "ai_failed", message: `Claude call failed: ${e.message ?? "Unknown"}` }, 502);
   }
 };
 
@@ -459,5 +511,31 @@ Direct, pragmatic, zero fluff. Use second person ("you"). Call the user's strate
 }
 
 function buildDynamicContext(graph: unknown): string {
-  return `── Current strategy graph (live snapshot)\n${JSON.stringify(graph, null, 2)}`;
+  // Ship Claude the semantic skeleton of the graph only. The canvas
+  // state (positions, zoom, selection), StrategyNode.label (pure UX
+  // text), and node.category (derivable from node.type) are pure
+  // noise — they bloat the input tokens, slow the turn, and push us
+  // closer to the Netlify 60s timeout without helping reasoning.
+  //
+  // Before: ~3–8 KB per turn.
+  // After: ~1–2 KB per turn.
+  const g = graph as {
+    metadata?: unknown;
+    nodes?: Array<{ id: string; type: string; params?: unknown }>;
+    edges?: Array<{ id: string; source: string; target: string }>;
+  };
+  const slim = {
+    metadata: g?.metadata ?? {},
+    nodes: (g?.nodes ?? []).map((n) => ({
+      id: n.id,
+      type: n.type,
+      params: n.params ?? {},
+    })),
+    edges: (g?.edges ?? []).map((e) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+    })),
+  };
+  return `── Current strategy graph (live snapshot)\n${JSON.stringify(slim, null, 2)}`;
 }
