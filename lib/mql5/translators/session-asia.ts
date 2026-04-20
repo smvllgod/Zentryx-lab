@@ -14,7 +14,7 @@ export const translate_session_asia: Translator = (node) => {
     ],
     gates: [
       {
-        expr: `(TimeHour(TimeTradeServer()) >= (23 + ${off} + 24) % 24 || TimeHour(TimeTradeServer()) < (8 + ${off} + 24) % 24)`,
+        expr: `(ZxHour() >= (23 + ${off} + 24) % 24 || ZxHour() < (8 + ${off} + 24) % 24)`,
         reason: "outside Asia session",
       },
     ],

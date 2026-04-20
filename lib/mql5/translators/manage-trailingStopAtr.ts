@@ -28,10 +28,10 @@ export const translate_manage_trailingStopAtr: Translator = (node) => {
     double sl = PositionGetDouble(POSITION_SL);
     if(dir == POSITION_TYPE_BUY) {
       double newSl = bid - trailDist;
-      if(newSl > sl) { MqlTradeRequest r; MqlTradeResult rr; ZeroMemory(r); ZeroMemory(rr); r.action=TRADE_ACTION_SLTP; r.position=PositionGetInteger(POSITION_TICKET); r.symbol=_Symbol; r.sl=newSl; r.tp=PositionGetDouble(POSITION_TP); OrderSend(r, rr); }
+      if(newSl > sl) { MqlTradeRequest r; MqlTradeResult rr; ZeroMemory(r); ZeroMemory(rr); r.action=TRADE_ACTION_SLTP; r.position=(ulong)PositionGetInteger(POSITION_TICKET); r.symbol=_Symbol; r.sl=newSl; r.tp=PositionGetDouble(POSITION_TP); OrderSend(r, rr); }
     } else if(dir == POSITION_TYPE_SELL) {
       double newSl = ask + trailDist;
-      if(sl == 0 || newSl < sl) { MqlTradeRequest r; MqlTradeResult rr; ZeroMemory(r); ZeroMemory(rr); r.action=TRADE_ACTION_SLTP; r.position=PositionGetInteger(POSITION_TICKET); r.symbol=_Symbol; r.sl=newSl; r.tp=PositionGetDouble(POSITION_TP); OrderSend(r, rr); }
+      if(sl == 0 || newSl < sl) { MqlTradeRequest r; MqlTradeResult rr; ZeroMemory(r); ZeroMemory(rr); r.action=TRADE_ACTION_SLTP; r.position=(ulong)PositionGetInteger(POSITION_TICKET); r.symbol=_Symbol; r.sl=newSl; r.tp=PositionGetDouble(POSITION_TP); OrderSend(r, rr); }
     }
   }
 }`,

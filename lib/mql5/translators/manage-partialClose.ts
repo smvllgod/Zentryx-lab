@@ -30,7 +30,7 @@ export const translate_manage_partialClose: Translator = (node) => {
       if(closeVol > 0) {
         MqlTradeRequest r; MqlTradeResult rr; ZeroMemory(r); ZeroMemory(rr);
         r.action = TRADE_ACTION_DEAL;
-        r.position = PositionGetInteger(POSITION_TICKET);
+        r.position = (ulong)PositionGetInteger(POSITION_TICKET);
         r.symbol = _Symbol;
         r.volume = closeVol;
         r.type = (dir == POSITION_TYPE_BUY) ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;

@@ -12,7 +12,7 @@ export const translate_session_newYork: Translator = (node) => {
     ],
     gates: [
       {
-        expr: `(TimeHour(TimeTradeServer()) >= (12 + ${off} + 24) % 24 && TimeHour(TimeTradeServer()) < (21 + ${off} + 24) % 24)`,
+        expr: `(ZxHour() >= (12 + ${off} + 24) % 24 && ZxHour() < (21 + ${off} + 24) % 24)`,
         reason: "outside New York session",
       },
     ],

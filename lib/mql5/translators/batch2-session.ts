@@ -36,7 +36,7 @@ export const translate_session_london: Translator = (node) => {
   return {
     inputs: [{ name: off, type: "int", defaultExpr: String(p.utcOffset ?? 0), label: "Server UTC offset (h)" }],
     gates: [{
-      expr: `(TimeHour(TimeTradeServer()) >= (7 + ${off} + 24) % 24 && TimeHour(TimeTradeServer()) < (16 + ${off} + 24) % 24)`,
+      expr: `(ZxHour() >= (7 + ${off} + 24) % 24 && ZxHour() < (16 + ${off} + 24) % 24)`,
       reason: "outside London session",
     }],
     summaryFragments: [`London session (UTC offset ${p.utcOffset ?? 0}h)`],
@@ -50,7 +50,7 @@ export const translate_session_overlap: Translator = (node) => {
   return {
     inputs: [{ name: off, type: "int", defaultExpr: String(p.utcOffset ?? 0), label: "Server UTC offset (h)" }],
     gates: [{
-      expr: `(TimeHour(TimeTradeServer()) >= (12 + ${off} + 24) % 24 && TimeHour(TimeTradeServer()) < (16 + ${off} + 24) % 24)`,
+      expr: `(ZxHour() >= (12 + ${off} + 24) % 24 && ZxHour() < (16 + ${off} + 24) % 24)`,
       reason: "outside LON/NY overlap",
     }],
     summaryFragments: [`London/NY overlap (UTC offset ${p.utcOffset ?? 0}h)`],

@@ -123,6 +123,16 @@ bool ZxIsNewBar()
    return false;
 }
 
+// TimeHour/TimeMinute/TimeDayOfWeek etc. are deprecated in MQL5 (MT5
+// marks them with a compiler warning under #property strict and future
+// builds may remove them). Use these helpers instead — they read
+// TimeTradeServer() once via TimeToStruct.
+int ZxHour()       { MqlDateTime _t; TimeToStruct(TimeTradeServer(), _t); return _t.hour; }
+int ZxMinute()     { MqlDateTime _t; TimeToStruct(TimeTradeServer(), _t); return _t.min; }
+int ZxDayOfWeek()  { MqlDateTime _t; TimeToStruct(TimeTradeServer(), _t); return _t.day_of_week; }
+int ZxDayOfYear()  { MqlDateTime _t; TimeToStruct(TimeTradeServer(), _t); return _t.day_of_year; }
+int ZxMonth()      { MqlDateTime _t; TimeToStruct(TimeTradeServer(), _t); return _t.mon; }
+
 ${helpers.length ? helpers.join("\n\n") : ""}
 ${telemetryHelpers}
 
@@ -183,11 +193,16 @@ ${indent(
 //─────────────────────────────────────────────────────────────────────
 void ZxOpen(ENUM_ORDER_TYPE direction)
 {
-   double entryPrice = (direction == ORDER_TYPE_BUY)
-                       ? SymbolInfoDouble(_Symbol, SYMBOL_ASK)
-                       : SymbolInfoDouble(_Symbol, SYMBOL_BID);
-   double slPrice = 0.0;
-   double tpPrice = 0.0;
+   // Local helpers every stopLevels contribution relies on. Declaring
+   // them here (instead of each translator doing so) avoids
+   // undeclared-identifier errors and keeps the MQL5 output small.
+   bool   isLong              = (direction == ORDER_TYPE_BUY);
+   double entryPrice          = isLong
+                                ? SymbolInfoDouble(_Symbol, SYMBOL_ASK)
+                                : SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double slPrice             = 0.0;
+   double tpPrice             = 0.0;
+   double slPriceDistancePips = 0.0;
 
 ${indent(stopBody, 3)}
 

@@ -13,12 +13,12 @@ export const translate_exit_endOfDay: Translator = (node) => {
       { name: cIn, type: "int", defaultExpr: String(p.cutoffHour ?? 22), label: "EOD cutoff hour (server)" },
     ],
     gates: [
-      { expr: `(TimeHour(TimeTradeServer()) < ${cIn})`, reason: "after EOD cutoff" },
+      { expr: `(ZxHour() < ${cIn})`, reason: "after EOD cutoff" },
     ],
     positionManagement: [
       `// End-of-day flatten (${node.id})
 {
-   if(TimeHour(TimeTradeServer()) >= ${cIn})
+   if(ZxHour() >= ${cIn})
    {
       for(int i=PositionsTotal()-1; i>=0; i--) {
          ulong ticket = PositionGetTicket(i);

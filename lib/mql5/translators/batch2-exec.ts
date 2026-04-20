@@ -89,12 +89,13 @@ export const translate_exec_marginLevelFloor: Translator = (node) => {
     helpers: [
       `double MarginLevelPct()
 {
-   double ml = 0.0;
-   if(!AccountInfoDouble(ACCOUNT_MARGIN_LEVEL, ml)) return 999999.0;
-   return ml;
+   // AccountInfoDouble is a single-arg function in MQL5; earlier code
+   // used a non-existent 2-arg overload which broke compilation.
+   if(AccountInfoDouble(ACCOUNT_MARGIN) == 0) return 999999.0;
+   return AccountInfoDouble(ACCOUNT_MARGIN_LEVEL);
 }`,
     ],
-    gates: [{ expr: `(AccountInfoDouble(ACCOUNT_MARGIN_LEVEL) >= ${mIn} || AccountInfoDouble(ACCOUNT_MARGIN) == 0)`, reason: "margin level below floor" }],
+    gates: [{ expr: `(MarginLevelPct() >= ${mIn})`, reason: "margin level below floor" }],
     summaryFragments: [`Margin-level ≥ ${p.minMarginLevel}%`],
   };
 };

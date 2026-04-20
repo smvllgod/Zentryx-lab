@@ -6,6 +6,7 @@ import { TRANSLATORS } from "./translators";
 import { assemble } from "./template";
 import { renderAppearance } from "./appearance-renderer";
 import { translateProtections } from "./protections";
+import { validateMql5Source } from "./validator";
 
 // ──────────────────────────────────────────────────────────────────
 // Compiler pipeline
@@ -127,6 +128,21 @@ export function compileStrategy(
     contributions: collected,
     telemetry: options.telemetry,
   });
+
+  // Post-pass: static-scan the generated source for known MQL5 compile
+  // pitfalls (unbalanced braces, duplicate function definitions, 2-arg
+  // AccountInfoDouble, stopBody identifiers leaking into OnTick, ...).
+  // Errors make it upstream so the UI can warn before the user opens
+  // MetaEditor; warnings are informational.
+  try {
+    for (const d of validateMql5Source(source)) diagnostics.push(d);
+  } catch (err) {
+    diagnostics.push({
+      level: "warning",
+      code: "mql5_validator_threw",
+      message: `Static MQL5 validator failed: ${(err as Error).message}. EA source was still emitted.`,
+    });
+  }
 
   return {
     source,
