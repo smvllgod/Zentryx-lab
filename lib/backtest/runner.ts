@@ -23,10 +23,8 @@ import type {
   TradeSide,
 } from "./types";
 import { buildEvaluator, type EvalContext } from "./evaluator";
-import { pipSizeForSymbol } from "./sample-data";
+import { pipSizeForSymbol, dollarPerPipPerLot } from "./sample-data";
 import { computeMetrics } from "./metrics";
-
-const DOLLAR_PER_PIP_PER_LOT = 10; // approx; honest in docs
 
 interface OpenPos {
   id: number;
@@ -51,6 +49,7 @@ export function runBacktest(input: BacktestInput): BacktestResult {
   const t0 = performance.now();
   const { graph, bars, symbol, timeframe, startingBalance, spreadPoints } = input;
   const pipSize = pipSizeForSymbol(symbol);
+  const ppl = dollarPerPipPerLot(symbol); // $ per pip per lot, per-symbol
 
   const { evaluateBar, diagnostics } = buildEvaluator(graph, bars, symbol);
 
@@ -92,7 +91,7 @@ export function runBacktest(input: BacktestInput): BacktestResult {
     if (!open) return;
     const priceMoved = open.side === "long" ? price - open.openPrice : open.openPrice - price;
     const pips = priceMoved / pipSize;
-    const pnl = pips * DOLLAR_PER_PIP_PER_LOT * open.lots;
+    const pnl = pips * ppl * open.lots;
     const rMultiple = open.initialRiskCash > 0 ? pnl / open.initialRiskCash : 0;
 
     trades.push({
@@ -206,7 +205,7 @@ export function runBacktest(input: BacktestInput): BacktestResult {
             slPrice,
             tpPrice,
             initialSlPips: sig.slPips,
-            initialRiskCash: sig.slPips * DOLLAR_PER_PIP_PER_LOT * sig.lots,
+            initialRiskCash: sig.slPips * ppl * sig.lots,
             beMoved: false,
             beTriggerPips: sig.beTriggerPips,
             trailDistPips: sig.trailDistPips,
@@ -226,7 +225,7 @@ export function runBacktest(input: BacktestInput): BacktestResult {
       const pips = open.side === "long"
         ? (priceNow - open.openPrice) / pipSize
         : (open.openPrice - priceNow) / pipSize;
-      mtm += pips * DOLLAR_PER_PIP_PER_LOT * open.lots;
+      mtm += pips * ppl * open.lots;
     }
     equity.push({ time: bar.time, equity: mtm });
   }

@@ -13,7 +13,7 @@
 
 import type { Bar, BacktestDiagnostic } from "./types";
 import type { StrategyGraph, StrategyNode, NodeType } from "@/lib/strategies/types";
-import { pipSizeForSymbol } from "./sample-data";
+import { pipSizeForSymbol, dollarPerPipPerLot } from "./sample-data";
 
 // ── indicator caches ───────────────────────────────────────────────
 // All indicators are computed lazily and memoised per run.
@@ -351,6 +351,7 @@ function nodeFamily(type: NodeType): Supported | null {
 export function buildEvaluator(graph: StrategyGraph, bars: Bar[], symbol: string) {
   const cache = makeCache();
   const pipSize = pipSizeForSymbol(symbol);
+  const ppl = dollarPerPipPerLot(symbol);
   const byCat = indexGraph(graph);
   const diagnostics: BacktestDiagnostic[] = [];
   const warnedTypes = new Set<string>();
@@ -938,12 +939,10 @@ export function buildEvaluator(graph: StrategyGraph, bars: Bar[], symbol: string
     if (slPips > 0) {
       switch (lotMode) {
         case "fromRisk": {
-          // pip value for 1 lot, dollar approximation: contractSize * pipSize
-          // e.g. EURUSD: 100k * 0.0001 = $10 per pip per lot.
-          // For XAUUSD: 100 oz * 0.1 = $10 per pip per lot.
-          const dollarPerPipPerLot = 10;
+          // pip value is per-symbol — see dollarPerPipPerLot() for the
+          // broker-independent approximation.
           const cash = riskCashFixed > 0 ? riskCashFixed : ctx.balance * (riskPct / 100);
-          lots = cash / (slPips * dollarPerPipPerLot);
+          lots = cash / (slPips * ppl);
           break;
         }
         case "fixed":
