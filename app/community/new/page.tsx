@@ -23,11 +23,12 @@ import {
   createPost, listCategories, listMyPosts, uploadForumImage, deleteForumImage,
   type ForumCategory, type ForumPost,
 } from "@/lib/forum/client";
+import { moderatePostAsync } from "@/lib/moderation/client";
 import { formatRelative } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 
 export default function NewPostPage() {
-  const { user, ready } = useAuth();
+  const { user, profile, ready } = useAuth();
   const router = useRouter();
 
   const [categories, setCategories] = useState<ForumCategory[]>([]);
@@ -44,21 +45,26 @@ export default function NewPostPage() {
     if (ready && !user) router.replace("/sign-in?returnTo=/community/new");
   }, [ready, user, router]);
 
+  const isAdmin = (profile?.role ?? "user") === "admin";
+
   useEffect(() => {
     let alive = true;
     (async () => {
-      const [cats, own] = await Promise.all([listCategories(), listMyPosts()]);
+      const [catsRaw, own] = await Promise.all([listCategories(), listMyPosts()]);
+      // Hide admin-only categories (e.g. Announcements) from non-admin users.
+      const cats = catsRaw.filter(
+        (c) => isAdmin || !((c as unknown as { admin_only?: boolean }).admin_only),
+      );
       if (alive) {
         setCategories(cats);
         setMine(own);
-        // Prefer "discussion" if it exists, otherwise the first.
         if (!cats.some((c) => c.slug === "discussion") && cats.length > 0) {
           setCategorySlug(cats[0].slug);
         }
       }
     })();
     return () => { alive = false; };
-  }, []);
+  }, [isAdmin]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -67,8 +73,12 @@ export default function NewPostPage() {
     if (!categorySlug) { toast.error("Pick a category."); return; }
     setSaving(true);
     try {
-      await createPost({ categorySlug, title: title.trim(), body: body.trim(), imageUrls: images });
-      toast.success("Post submitted — awaiting moderation.");
+      const created = await createPost({ categorySlug, title: title.trim(), body: body.trim(), imageUrls: images });
+      toast.success("Post submitted — AI moderation running now.");
+      // Fire-and-forget: the AI moderator may auto-approve the post
+      // before the human queue catches it, so the user sees it live
+      // within seconds instead of "pending" for hours.
+      moderatePostAsync("forum", created.id);
       router.push("/community");
     } catch (err) {
       toast.error("Submit failed: " + (err as Error).message);

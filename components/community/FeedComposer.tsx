@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth/context";
 import { createFeedPost, uploadFeedImage, deleteFeedImage, type FeedPost } from "@/lib/feed/client";
+import { moderatePostAsync } from "@/lib/moderation/client";
 import { cn } from "@/lib/utils/cn";
 
 const MAX_IMAGES = 4;
@@ -69,6 +70,9 @@ export function FeedComposer({ onPosted }: { onPosted: (post: FeedPost) => void 
       setBody("");
       setImages([]);
       toast.success("Posted.");
+      // Fire-and-forget AI moderation — the post is live instantly and
+      // the AI may retroactively soft-delete it if it looks like spam.
+      moderatePostAsync("feed", post.id);
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
