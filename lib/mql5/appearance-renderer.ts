@@ -163,14 +163,36 @@ interface EmitCtx {
 
 function emitInit(ctx: EmitCtx): string {
   const { theme, schema, modules, panelW, panelH, accentMql, isCompact, size } = ctx;
-  const corner = MT5_CORNER[schema.layout.corner];
-  const ox = schema.layout.offset.x;
-  const oy = schema.layout.offset.y;
 
-  const bodyX = ox + theme.layout.padding.x;
-  const bodyYStart = oy + (schema.overrides.hideHeader ? 0 : theme.layout.headerHeight) + theme.layout.padding.y;
-  const valueXOffset = panelW - theme.layout.padding.x;
+  // ── Coordinate transform ───────────────────────────────────────────
+  // MT5 measures XDISTANCE/YDISTANCE FROM the anchored corner INWARD
+  // (leftward for right corners, upward for bottom corners). But an
+  // OBJ_RECTANGLE_LABEL's top-left anchor always extends right and
+  // down — so for right/bottom corners, naively passing `ox` as
+  // XDISTANCE draws the panel OFF the chart. The old code did exactly
+  // that; this rewrite emits ternaries on the runtime-controllable
+  // `InpDashboardAnchor` input so the user can switch corners from
+  // MT5 Parameters and the panel repositions correctly.
+  //
+  // For a label at panel-relative (relX, relY) where (0,0) is the
+  // panel's top-left, the MT5 XDISTANCE is:
+  //   right-anchored corner  → panelW + ox - relX
+  //   left-anchored corner   →          ox + relX
+  // and YDISTANCE:
+  //   bottom-anchored corner → panelH + oy - relY
+  //   top-anchored corner    →          oy + relY
+  //
+  // The helpers below emit those ternaries so the computation is done
+  // at runtime against the user's live input values.
+  const xAt = (relX: number) =>
+    `(_isRight ? ${panelW} + _ox - ${relX} : _ox + ${relX})`;
+  const yAt = (relY: number) =>
+    `(_isBottom ? ${panelH} + _oy - ${relY} : _oy + ${relY})`;
 
+  const padX = theme.layout.padding.x;
+  const padY = theme.layout.padding.y;
+  const headerH = theme.layout.headerHeight;
+  const bodyYStart = (schema.overrides.hideHeader ? 0 : headerH) + padY;
   const rowH = theme.layout.rowHeight + theme.layout.moduleSpacing;
 
   const labelCase = theme.id === "dark-terminal" || theme.id === "institutional"
@@ -179,47 +201,64 @@ function emitInit(ctx: EmitCtx): string {
 
   const lines: string[] = [];
   lines.push(`void ZxLabInit() {`);
+  // Runtime corner + offset resolution — reads the dashboard inputs
+  // every time ZxLabInit is called. MT5 invokes OnInit on re-apply,
+  // which is what happens when the user changes an input, so these
+  // values are always fresh.
+  lines.push(`  int  _corner;`);
+  lines.push(`  bool _isRight, _isBottom;`);
+  lines.push(`  switch(InpDashboardAnchor) {`);
+  lines.push(`    case 0:  _corner = CORNER_LEFT_UPPER;  _isRight = false; _isBottom = false; break;`);
+  lines.push(`    case 1:  _corner = CORNER_RIGHT_UPPER; _isRight = true;  _isBottom = false; break;`);
+  lines.push(`    case 2:  _corner = CORNER_LEFT_LOWER;  _isRight = false; _isBottom = true;  break;`);
+  lines.push(`    default: _corner = CORNER_RIGHT_LOWER; _isRight = true;  _isBottom = true;  break;`);
+  lines.push(`  }`);
+  lines.push(`  int _ox = InpDashboardOffsetX;`);
+  lines.push(`  int _oy = InpDashboardOffsetY;`);
+  lines.push(``);
   lines.push(`  // Panel chrome`);
-  lines.push(`  ZxCreateRect("${OBJ_PREFIX}bg", ${corner}, ${ox}, ${oy}, ${panelW}, ${panelH}, ${theme.palette.panelBg.mql}, ${theme.palette.panelBorder.mql}, ${borderWidthFor(theme.borderStyle)});`);
+  lines.push(`  ZxCreateRect("${OBJ_PREFIX}bg", _corner, ${xAt(0)}, ${yAt(0)}, ${panelW}, ${panelH}, ${theme.palette.panelBg.mql}, ${theme.palette.panelBorder.mql}, ${borderWidthFor(theme.borderStyle)});`);
 
   // Accent element — depends on header style
   if (theme.headerStyle === "accent-bar") {
-    lines.push(`  ZxCreateRect("${OBJ_PREFIX}accentBar", ${corner}, ${ox}, ${oy}, ${panelW}, 2, ${accentMql}, ${accentMql}, 0);`);
+    lines.push(`  ZxCreateRect("${OBJ_PREFIX}accentBar", _corner, ${xAt(0)}, ${yAt(0)}, ${panelW}, 2, ${accentMql}, ${accentMql}, 0);`);
   } else if (theme.id === "light-pro" || theme.id === "minimal-pro") {
-    // Left accent column (1.5 px)
-    lines.push(`  ZxCreateRect("${OBJ_PREFIX}accentCol", ${corner}, ${ox}, ${oy}, 2, ${panelH}, ${accentMql}, ${accentMql}, 0);`);
+    // Left accent column (2 px): at panel-relative x=0, full height
+    lines.push(`  ZxCreateRect("${OBJ_PREFIX}accentCol", _corner, ${xAt(0)}, ${yAt(0)}, 2, ${panelH}, ${accentMql}, ${accentMql}, 0);`);
   }
 
   // Header background (if solid/bordered)
   if (!schema.overrides.hideHeader) {
     if (theme.headerStyle === "solid" || theme.headerStyle === "bordered") {
-      lines.push(`  ZxCreateRect("${OBJ_PREFIX}headerBg", ${corner}, ${ox}, ${oy}, ${panelW}, ${theme.layout.headerHeight}, ${theme.palette.headerBg.mql}, ${theme.palette.panelBorder.mql}, ${theme.headerStyle === "bordered" ? 1 : 0});`);
+      lines.push(`  ZxCreateRect("${OBJ_PREFIX}headerBg", _corner, ${xAt(0)}, ${yAt(0)}, ${panelW}, ${headerH}, ${theme.palette.headerBg.mql}, ${theme.palette.panelBorder.mql}, ${theme.headerStyle === "bordered" ? 1 : 0});`);
     }
     // EA name label
-    lines.push(`  ZxCreateLabel("${OBJ_PREFIX}title", ${corner}, ${ox + theme.layout.padding.x}, ${oy + Math.floor(theme.layout.headerHeight / 2) - Math.floor(theme.typography.h1.size / 2)}, "${esc(labelCase(schema.branding.eaName))}", "${theme.typography.h1.font}", ${theme.typography.h1.size}, ${theme.palette.headerText.mql});`);
+    const titleY = Math.floor(headerH / 2) - Math.floor(theme.typography.h1.size / 2);
+    lines.push(`  ZxCreateLabel("${OBJ_PREFIX}title", _corner, ${xAt(padX)}, ${yAt(titleY)}, "${esc(labelCase(schema.branding.eaName))}", "${theme.typography.h1.font}", ${theme.typography.h1.size}, ${theme.palette.headerText.mql});`);
 
     if (schema.branding.subtitle && !isCompact) {
-      lines.push(`  ZxCreateLabel("${OBJ_PREFIX}subtitle", ${corner}, ${ox + theme.layout.padding.x + titleWidthHint(theme)}, ${oy + Math.floor(theme.layout.headerHeight / 2) - Math.floor(theme.typography.h2.size / 2)}, "${esc(schema.branding.subtitle)}", "${theme.typography.h2.font}", ${theme.typography.h2.size}, ${theme.palette.muted.mql});`);
+      const subY = Math.floor(headerH / 2) - Math.floor(theme.typography.h2.size / 2);
+      lines.push(`  ZxCreateLabel("${OBJ_PREFIX}subtitle", _corner, ${xAt(padX + titleWidthHint(theme))}, ${yAt(subY)}, "${esc(schema.branding.subtitle)}", "${theme.typography.h2.font}", ${theme.typography.h2.size}, ${theme.palette.muted.mql});`);
     }
   }
 
-  // KPI rows
+  // KPI rows — labels at panel-relative x = padX (left-anchored),
+  // values at panel-relative x = panelW - padX (right-anchored).
   lines.push(`  // KPI rows`);
   modules.forEach((m, i) => {
     const y = bodyYStart + i * rowH;
-    lines.push(`  ZxCreateLabel("${OBJ_PREFIX}lab_${m.id}", ${corner}, ${bodyX}, ${y}, "${esc(labelCase(m.label))}", "${theme.typography.body.font}", ${theme.typography.body.size}, ${theme.palette.bodyText.mql});`);
-    // Value labels are created empty here and refreshed on every tick
-    lines.push(`  ZxCreateLabel("${OBJ_PREFIX}val_${m.id}", ${corner}, ${valueXOffset}, ${y}, "—", "${valueFontFor(theme, m)}", ${theme.typography.mono.size}, ${valueColorFor(theme, m)}, ANCHOR_RIGHT_UPPER);`);
+    lines.push(`  ZxCreateLabel("${OBJ_PREFIX}lab_${m.id}", _corner, ${xAt(padX)}, ${yAt(y)}, "${esc(labelCase(m.label))}", "${theme.typography.body.font}", ${theme.typography.body.size}, ${theme.palette.bodyText.mql});`);
+    lines.push(`  ZxCreateLabel("${OBJ_PREFIX}val_${m.id}", _corner, ${xAt(panelW - padX)}, ${yAt(y)}, "—", "${valueFontFor(theme, m)}", ${theme.typography.mono.size}, ${valueColorFor(theme, m)}, ANCHOR_RIGHT_UPPER);`);
   });
 
   // Footer
   if (!schema.overrides.hideFooter && theme.layout.footerHeight > 0) {
-    const footerY = oy + panelH - theme.layout.footerHeight;
+    const footerY = panelH - theme.layout.footerHeight;
     lines.push(`  // Footer`);
     if (theme.headerStyle === "solid" || theme.headerStyle === "bordered") {
-      lines.push(`  ZxCreateRect("${OBJ_PREFIX}footerBg", ${corner}, ${ox}, ${footerY}, ${panelW}, ${theme.layout.footerHeight}, ${theme.palette.headerBg.mql}, ${theme.palette.panelBorder.mql}, 0);`);
+      lines.push(`  ZxCreateRect("${OBJ_PREFIX}footerBg", _corner, ${xAt(0)}, ${yAt(footerY)}, ${panelW}, ${theme.layout.footerHeight}, ${theme.palette.headerBg.mql}, ${theme.palette.panelBorder.mql}, 0);`);
     }
-    lines.push(`  ZxCreateLabel("${OBJ_PREFIX}footer", ${corner}, ${ox + theme.layout.padding.x}, ${footerY + 2}, ZxBrandCreator + "  " + ZxBrandVersion, "${theme.typography.body.font}", ${Math.max(theme.typography.body.size - 1, 8)}, ${theme.palette.muted.mql});`);
+    lines.push(`  ZxCreateLabel("${OBJ_PREFIX}footer", _corner, ${xAt(padX)}, ${yAt(footerY + 2)}, ZxBrandCreator + "  " + ZxBrandVersion, "${theme.typography.body.font}", ${Math.max(theme.typography.body.size - 1, 8)}, ${theme.palette.muted.mql});`);
   }
 
   lines.push(`  ChartRedraw(0);`);
