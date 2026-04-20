@@ -59,7 +59,7 @@ import { summarizeStrategy } from "@/lib/strategies/summary";
 import { compileStrategy, sanitizeFilename } from "@/lib/mql5/compiler";
 import { applyObfuscation, applyWatermark, obfuscateMql5 } from "@/lib/mql5/obfuscator";
 import type { ProtectionConfig } from "@/lib/mql5/protections";
-import { ProtectionPanel } from "@/components/builder/ProtectionPanel";
+import { ProtectionPanel, DEFAULT_PACKAGING, type PackagingConfig } from "@/components/builder/ProtectionPanel";
 import {
   createStrategy,
   getStrategy,
@@ -121,6 +121,10 @@ function BuilderInner() {
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [protectionOpen, setProtectionOpen] = useState(false);
   const [protections, setProtections] = useState<ProtectionConfig>({});
+  // Packaging config is persisted on strategy.metadata.packaging. It
+  // drives the MT5 Inputs-tab presentation (separator preset + PRODUCT
+  // INFO section). DEFAULT_PACKAGING = sober Professional preset.
+  const [packaging, setPackaging] = useState<PackagingConfig>(DEFAULT_PACKAGING);
   const [gateOpen, setGateOpen] = useState(false);
   const [gateList, setGateList] = useState<NodeType[]>([]);
 
@@ -173,6 +177,14 @@ function BuilderInner() {
         reset(safe);
         setStrategyId(row.id);
         setTelemetryToken((row as unknown as { telemetry_token?: string | null }).telemetry_token ?? null);
+        // Hydrate packaging from persisted metadata — if absent we
+        // keep the professional-preset default set on state init.
+        if (safe.metadata.packaging) {
+          setPackaging({
+            preset: safe.metadata.packaging.preset ?? "professional",
+            product: safe.metadata.packaging.product ?? {},
+          });
+        }
         // Auto-fit after the canvas has mounted the new graph — otherwise
         // templated strategies open zoomed-in on an arbitrary corner.
         if (safe.nodes.length > 0) {
@@ -204,8 +216,12 @@ function BuilderInner() {
       telemetry: telemetryToken && telemetryEndpoint
         ? { token: telemetryToken, endpoint: telemetryEndpoint }
         : undefined,
+      presentation: {
+        preset: packaging.preset,
+        product: packaging.product,
+      },
     }),
-    [graph, protections, telemetryToken, telemetryEndpoint],
+    [graph, protections, packaging, telemetryToken, telemetryEndpoint],
   );
 
   // Source delivered to the user at export time. Pipeline:
@@ -820,6 +836,18 @@ function BuilderInner() {
             plan={plan}
             hideWatermark={!preview.ok}
             showObfuscation={preview.ok}
+            packaging={packaging}
+            onPackagingChange={(next) => {
+              setPackaging(next);
+              // Mirror the change into graph.metadata so `Save` persists
+              // it alongside the canvas. We only touch metadata — the
+              // nodes array is left untouched so the canvas doesn't
+              // re-render.
+              setGraph((g) => ({
+                ...g,
+                metadata: { ...g.metadata, packaging: next },
+              }));
+            }}
           />
           <DialogFooter>
             <DialogClose asChild>

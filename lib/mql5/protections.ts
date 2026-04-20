@@ -171,7 +171,9 @@ function buildLicenseKey(opts: NonNullable<ProtectionConfig["licenseKey"]>): Sec
         name: "InpLicenseKey",
         type: "string",
         defaultExpr: `""`,
-        label: "License key (required)",
+        label: "License Key — Required",
+        section: "license",
+        orderHint: -10, // pin to top of LICENSE section
       },
     ],
     globals: [

@@ -20,6 +20,38 @@ export interface InputDecl {
   label?: string;
   /** Comment shown above the input. */
   comment?: string;
+  // ── Input-presenter metadata (see lib/mql5/input-presenter.ts)
+  /**
+   * Explicit section assignment. When omitted, the presenter infers
+   * the section from the input stem and the owning nodeType. Override
+   * this field for inputs whose heuristic placement is ambiguous
+   * (e.g. license key, dashboard toggle, product metadata).
+   */
+  section?:
+    | "product_info"
+    | "license"
+    | "strategy_core"
+    | "entry_logic"
+    | "filters"
+    | "risk_management"
+    | "sl_tp"
+    | "be_partial"
+    | "trailing"
+    | "session_news"
+    | "execution"
+    | "advanced"
+    | "dashboard";
+  /** Purely informational input (read-only intent). Rendered at the
+   * bottom of the section it belongs to. */
+  hint?: boolean;
+  /** Ordering tiebreaker inside a section. Negative pulls to top,
+   * positive pushes to bottom. Default 0 = declaration order. */
+  orderHint?: number;
+  /** Node type the input belongs to — stamped by the compiler on
+   *  each translator's inputs so the presenter can classify by
+   *  node category when `section` isn't set. Translators shouldn't
+   *  set this manually. */
+  nodeType?: string;
 }
 
 export interface IndicatorHandle {

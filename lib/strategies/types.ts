@@ -121,6 +121,21 @@ export interface StrategyMetadata {
    * Stored as-is in Supabase; the MQL5 compiler pulls it at export time.
    */
   appearance?: import("../appearance/types").VisualSchema;
+  /**
+   * Packaging config — drives the MT5 Inputs-tab presentation:
+   * which preset (professional / premium_seller / institutional) and
+   * what metadata populates the PRODUCT INFO section.
+   * Consumed by `CompileOptions.presentation` at export time.
+   */
+  packaging?: {
+    preset: "professional" | "premium_seller" | "institutional";
+    product?: {
+      name?: string;
+      version?: string;
+      vendor?: string;
+      supportUrl?: string;
+    };
+  };
 }
 
 export type Timeframe =

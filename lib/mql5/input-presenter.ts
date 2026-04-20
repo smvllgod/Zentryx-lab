@@ -46,20 +46,15 @@ export type InputSection =
 
 export type PresenterPreset = "professional" | "premium_seller" | "institutional";
 
-/** InputDecl + optional metadata the presenter uses. Backwards-compatible
- * with plain InputDecl — fields are all optional. */
+/**
+ * InputDecl augmented with the `nodeType` the compiler stamps onto
+ * every contribution's inputs. The other presentation fields
+ * (section, hint, orderHint) live on InputDecl itself — see lib/mql5/types.ts.
+ */
 export interface SectionedInput extends InputDecl {
-  /** Explicit section; when omitted, inferred from name + nodeType. */
-  section?: InputSection;
-  /** Purely informational (read-only intent) — renders at the bottom
-   *  of its section and the label is prefixed with "ℹ". */
-  hint?: boolean;
-  /** Node type the input belongs to (set by the assembler from each
-   *  contribution). Used by `inferSection()` when `section` is unset. */
+  /** Node type the input belongs to (stamped by the compiler). Used
+   *  by `inferSection()` when the translator didn't set `section`. */
   nodeType?: string;
-  /** 0 = default; negative pulls to top of section; positive pushes
-   *  to bottom. Used for the few cases where stem-order is wrong. */
-  orderHint?: number;
 }
 
 export interface PresentInputsOptions {

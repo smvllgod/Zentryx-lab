@@ -19,12 +19,32 @@
 // ──────────────────────────────────────────────────────────────────
 
 import { useMemo } from "react";
-import { Lock, Timer, Building2, ShieldOff, KeyRound, Stamp, EyeOff, Globe2, Crown } from "lucide-react";
+import { Lock, Timer, Building2, ShieldOff, KeyRound, Stamp, EyeOff, Globe2, Crown, Package } from "lucide-react";
 import type { ProtectionConfig } from "@/lib/mql5/protections";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { DateTimePicker } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils/cn";
+
+// ── Packaging config ──────────────────────────────────────────────
+// Drives the MT5 Inputs-tab presentation preset + PRODUCT INFO fields.
+// Consumed by `CompileOptions.presentation` at export.
+export type PresentationPreset = "professional" | "premium_seller" | "institutional";
+
+export interface PackagingConfig {
+  preset: PresentationPreset;
+  product: {
+    name?: string;
+    version?: string;
+    vendor?: string;
+    supportUrl?: string;
+  };
+}
+
+export const DEFAULT_PACKAGING: PackagingConfig = {
+  preset: "professional",
+  product: {},
+};
 
 type Plan = "free" | "pro" | "creator";
 
@@ -38,6 +58,11 @@ interface ProtectionPanelProps {
   hideWatermark?: boolean;
   /** Show the obfuscation section. Defaults to false at publish time. */
   showObfuscation?: boolean;
+  /** Packaging config — controls the MT5 Inputs-tab presentation +
+   *  PRODUCT INFO section. When omitted, the packaging section is
+   *  hidden (legacy callers are unaffected). */
+  packaging?: PackagingConfig;
+  onPackagingChange?: (next: PackagingConfig) => void;
   className?: string;
 }
 
@@ -83,7 +108,7 @@ function isEnabled(value: ProtectionConfig, id: BlockId): boolean {
   return value[id] !== undefined;
 }
 
-export function ProtectionPanel({ value, onChange, plan, hideWatermark, showObfuscation, className }: ProtectionPanelProps) {
+export function ProtectionPanel({ value, onChange, plan, hideWatermark, showObfuscation, packaging, onPackagingChange, className }: ProtectionPanelProps) {
   const blocks = useMemo(
     () => BLOCKS.filter((b) => {
       if (b.id === "watermark" && hideWatermark) return false;
@@ -114,6 +139,9 @@ export function ProtectionPanel({ value, onChange, plan, hideWatermark, showObfu
 
   return (
     <div className={cn("space-y-3", className)}>
+      {packaging && onPackagingChange && (
+        <PackagingSection value={packaging} onChange={onPackagingChange} />
+      )}
       {blocks.map((b) => {
         const unlocked = isUnlocked(b, plan);
         const enabled = unlocked && isEnabled(value, b.id);
@@ -380,4 +408,133 @@ function parseCsvNumbers(input: string): number[] {
 
 function parseCsvStrings(input: string): string[] {
   return input.split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Packaging section — renders above the protection blocks
+// ──────────────────────────────────────────────────────────────────
+// Controls the MT5 Inputs-tab presentation preset (separator style)
+// and fills the PRODUCT INFO section the user sees when they load
+// the EA into MetaTrader. All fields are optional — omitted ones
+// simply don't appear in MT5 Parameters.
+// ──────────────────────────────────────────────────────────────────
+
+const PRESETS: Array<{ id: PresentationPreset; title: string; subtitle: string; sample: string }> = [
+  {
+    id: "professional",
+    title: "Professional",
+    subtitle: "Sober ASCII separators. Best default for most exports.",
+    sample: "━━━ STRATEGY CORE ━━━",
+  },
+  {
+    id: "premium_seller",
+    title: "Premium Seller",
+    subtitle: "Heavier separators. Best when selling on marketplaces.",
+    sample: "═══ STRATEGY CORE ═══",
+  },
+  {
+    id: "institutional",
+    title: "Institutional",
+    subtitle: "Minimal, technical. Best for internal / prop-firm use.",
+    sample: "--- STRATEGY CORE ---",
+  },
+];
+
+function PackagingSection({
+  value,
+  onChange,
+}: {
+  value: PackagingConfig;
+  onChange: (next: PackagingConfig) => void;
+}) {
+  function patchProduct(p: Partial<PackagingConfig["product"]>) {
+    onChange({ ...value, product: { ...value.product, ...p } });
+  }
+
+  return (
+    <div className="rounded-xl border border-emerald-200 bg-emerald-50/30">
+      <div className="flex items-start gap-3 p-4">
+        <div className="w-9 h-9 rounded-lg bg-white border border-gray-100 flex items-center justify-center shrink-0">
+          <Package size={16} className="text-emerald-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h4 className="text-sm font-700 text-gray-900">Packaging</h4>
+            <Badge tone="emerald">always on</Badge>
+          </div>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Controls the MT5 Inputs tab presentation + the PRODUCT INFO section visible to buyers.
+          </p>
+        </div>
+      </div>
+
+      <div className="px-4 pb-4 pl-[68px] space-y-3 border-t border-emerald-100/60 pt-3">
+        {/* Preset picker */}
+        <div>
+          <FieldLabel>Separator style</FieldLabel>
+          <div className="mt-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {PRESETS.map((p) => {
+              const active = value.preset === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => onChange({ ...value, preset: p.id })}
+                  className={cn(
+                    "rounded-lg border px-3 py-2.5 text-left transition-colors",
+                    active
+                      ? "border-emerald-400 bg-white shadow-[0_1px_2px_rgba(16,185,129,0.15)]"
+                      : "border-gray-200 bg-white hover:border-gray-300",
+                  )}
+                >
+                  <div className="text-xs font-700 text-gray-900">{p.title}</div>
+                  <div className="mt-0.5 text-[10px] text-gray-500 leading-tight">{p.subtitle}</div>
+                  <div className="mt-1.5 font-mono text-[10px] text-gray-400 truncate">{p.sample}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Product metadata */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div>
+            <FieldLabel>Product name</FieldLabel>
+            <Input
+              placeholder="Donchian Turtle Breakout"
+              defaultValue={value.product.name ?? ""}
+              onBlur={(e) => patchProduct({ name: e.target.value.trim() || undefined })}
+            />
+          </div>
+          <div>
+            <FieldLabel>Version</FieldLabel>
+            <Input
+              placeholder="1.0.0"
+              defaultValue={value.product.version ?? ""}
+              onBlur={(e) => patchProduct({ version: e.target.value.trim() || undefined })}
+            />
+          </div>
+          <div>
+            <FieldLabel>Vendor</FieldLabel>
+            <Input
+              placeholder="Zentryx Lab"
+              defaultValue={value.product.vendor ?? ""}
+              onBlur={(e) => patchProduct({ vendor: e.target.value.trim() || undefined })}
+            />
+          </div>
+          <div>
+            <FieldLabel>Support URL</FieldLabel>
+            <Input
+              placeholder="zentryx.tech"
+              defaultValue={value.product.supportUrl ?? ""}
+              onBlur={(e) => patchProduct({ supportUrl: e.target.value.trim() || undefined })}
+            />
+          </div>
+        </div>
+        <p className="text-[11px] text-gray-400 leading-relaxed">
+          Any field left blank is simply omitted from the PRODUCT INFO section of the exported <code className="text-[10px]">.mq5</code>.
+        </p>
+      </div>
+    </div>
+  );
 }

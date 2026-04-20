@@ -90,13 +90,60 @@ export function renderAppearance(schema: VisualSchema): SectionContribution {
   return {
     helpers,
     globals,
-    onInitCode: [`ZxLabInit();`],
-    onDeinitCode: [`ZxLabDeinit();`],
-    positionManagement: [tick],
+    // User-facing dashboard inputs. These surface in the VISUAL
+    // DASHBOARD section of MT5's Parameters tab so the broker-side
+    // user can toggle the panel on/off or reposition it without
+    // re-exporting the EA.
+    inputs: [
+      {
+        name: "InpShowDashboard",
+        type: "bool",
+        defaultExpr: "true",
+        label: "Show On-Chart Dashboard",
+        section: "dashboard",
+        orderHint: -10,
+      },
+      {
+        name: "InpDashboardAnchor",
+        type: "int",
+        defaultExpr: String(cornerToInt(schema.layout.corner)),
+        label: "Panel Corner — 0 TL, 1 TR, 2 BL, 3 BR",
+        section: "dashboard",
+      },
+      {
+        name: "InpDashboardOffsetX",
+        type: "int",
+        defaultExpr: String(schema.layout.offset.x),
+        label: "Panel Offset X (px)",
+        section: "dashboard",
+      },
+      {
+        name: "InpDashboardOffsetY",
+        type: "int",
+        defaultExpr: String(schema.layout.offset.y),
+        label: "Panel Offset Y (px)",
+        section: "dashboard",
+      },
+    ],
+    // Gate the panel's lifecycle on InpShowDashboard so toggling the
+    // input in MT5 Parameters hides / shows the overlay without
+    // re-exporting. The runtime helpers themselves are always compiled.
+    onInitCode: [`if(InpShowDashboard) ZxLabInit();`],
+    onDeinitCode: [`if(InpShowDashboard) ZxLabDeinit();`],
+    positionManagement: [`if(InpShowDashboard) {\n${tick}\n}`],
     summaryFragments: [
       `${theme.displayName} theme · ${modules.length} modules · ${size}${isCompact ? " compact" : ""}`,
     ],
   };
+}
+
+function cornerToInt(corner: PanelCorner): number {
+  switch (corner) {
+    case "top-left":     return 0;
+    case "top-right":    return 1;
+    case "bottom-left":  return 2;
+    case "bottom-right": return 3;
+  }
 }
 
 // ────────────────────────────────────────────────────────────────────
