@@ -50,6 +50,7 @@ export function validateMql5Source(source: string): Diagnostic[] {
   checkPositionTicketCast(stripped, diagnostics);
   checkDuplicateTopLevelFunctions(stripped, diagnostics);
   checkZxOpenLeaks(source, stripped, diagnostics);
+  checkUndeclaredInputs(stripped, diagnostics);
 
   return diagnostics;
 }
@@ -192,6 +193,43 @@ function checkZxOpenLeaks(original: string, stripped: string, out: Diagnostic[])
   }
 }
 
+function checkUndeclaredInputs(src: string, out: Diagnostic[]): void {
+  // Collect every identifier declared as `input <type> <name>`. MQL5's
+  // `input` declarations live at file scope and are the only things any
+  // `InpXxx` reference should resolve to. If a helper/positionMgmt/entry
+  // condition references an `InpXxx` that was never declared, MetaEditor
+  // errors with "undeclared identifier" — see the telemetry bug that
+  // triggered this check.
+  const declRe =
+    /\binput\s+(?:const\s+)?(?:bool|char|uchar|short|ushort|int|uint|long|ulong|float|double|datetime|color|string|ENUM_[A-Z_]+)\s+([A-Za-z_][A-Za-z0-9_]*)\b/g;
+  const declared = new Set<string>();
+  let dm: RegExpExecArray | null;
+  while ((dm = declRe.exec(src)) !== null) declared.add(dm[1]);
+
+  // Any identifier starting with `Inp` (our universal input prefix) that
+  // isn't in `declared` is suspect. Skip declarations themselves and the
+  // `input string InpFoo = ...` line so we don't double-count.
+  const refRe = /\b(Inp[A-Za-z0-9_]+)\b/g;
+  const missing = new Map<string, number>();
+  let rm: RegExpExecArray | null;
+  while ((rm = refRe.exec(src)) !== null) {
+    const name = rm[1];
+    if (declared.has(name)) continue;
+    missing.set(name, (missing.get(name) ?? 0) + 1);
+  }
+  if (missing.size > 0) {
+    const details = [...missing.entries()]
+      .map(([n, c]) => `${n}(${c}×)`)
+      .sort()
+      .join(", ");
+    out.push({
+      level: "error",
+      code: "mql5_undeclared_input",
+      message: `Generated MQL5 references input identifier(s) that were never declared: ${details}. A helper/translator emitted code using an Inp* variable but no one emitted the matching \`input\` line. The EA will not compile.`,
+    });
+  }
+}
+
 // ──────────────────────────────────────────────────────────────────
 // Helpers
 // ──────────────────────────────────────────────────────────────────
@@ -241,6 +279,29 @@ function stripStringsAndComments(src: string): string {
           continue;
         }
         if (chars[i] === '"') {
+          chars[i] = " ";
+          i++;
+          break;
+        }
+        if (chars[i] !== "\n") chars[i] = " ";
+        i++;
+      }
+      continue;
+    }
+    // Char literal — MQL5 allows `'X'` or `'\n'`, `'\\'`, `'"'`, etc.
+    // Without this, a char like `'"'` fools the string-literal branch
+    // and the rest of the file gets eaten.
+    if (c === "'") {
+      chars[i] = " ";
+      i++;
+      while (i < chars.length) {
+        if (chars[i] === "\\" && chars[i + 1] !== undefined) {
+          chars[i] = " ";
+          chars[i + 1] = " ";
+          i += 2;
+          continue;
+        }
+        if (chars[i] === "'") {
           chars[i] = " ";
           i++;
           break;

@@ -38,7 +38,6 @@ export function assemble(input: AssemblerInput): string {
   const telemetryEnabled = Boolean(telemetry?.token && telemetry?.endpoint);
   const telemetryUrl = telemetry?.endpoint ?? "";
   const telemetryToken = telemetry?.token ?? "";
-  const telemetryHeader = telemetryEnabled ? telemetryInputsBlock() : "";
   const telemetryHelpers = telemetryEnabled ? telemetryHelpersBlock() : "";
   const telemetryHandler = telemetryEnabled ? telemetryHandlerBlock() : "";
 
@@ -60,7 +59,7 @@ input string  InpSymbolHint = "${sym}";        // Symbol hint (informational)
 input ENUM_TIMEFRAMES InpTimeframe = ${timeframeEnum(tf)};   // Working timeframe
 input long    InpMagic       = ${magic};        // Magic number
 input string  InpTradeComment = "${escapeStr(graph.metadata.tradeComment ?? "Zentryx Lab")}"; // Trade comment
-${telemetryHeader ? `
+${telemetryEnabled ? `
 // ── Live telemetry (Zentryx Lab) ───────────────────────────────────
 input string  InpTelemetryUrl   = "${escapeStr(telemetryUrl)}";
 input string  InpTelemetryToken = "${escapeStr(telemetryToken)}";
@@ -361,12 +360,12 @@ function timeframeEnum(tf: string): string {
 // Users must whitelist the telemetry URL once in MT5:
 //   Tools → Options → Expert Advisors → "Allow WebRequest for listed URL"
 // The EA prints a human-readable hint on OnInit if InpTelemetryOn is true.
-
-function telemetryInputsBlock(): string {
-  // Inputs are inlined in the main input block; this is a placeholder to
-  // keep the API symmetrical if we later split them out.
-  return "";
-}
+//
+// The `InpTelemetryUrl` / `InpTelemetryToken` / `InpTelemetryOn` input
+// declarations are inlined directly in the main input block above
+// (guarded on `telemetryEnabled`) — we don't split them into a helper
+// because the ordering matters: inputs must appear before any helper
+// that references them.
 
 function telemetryHelpersBlock(): string {
   return `// ── Zentryx Lab — live telemetry ─────────────────────────────────

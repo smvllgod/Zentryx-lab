@@ -61,6 +61,17 @@ void ZxOpen(ENUM_ORDER_TYPE direction)
 `,
     expectCode: "mql5_zxopen_leak",
   },
+  {
+    name: "Inp ref without declaration (telemetry regression)",
+    src: `input int InpMagic = 123;
+void ZxReportTrade(ulong t) {
+   if(!InpTelemetryOn) return;
+   if(StringLen(InpTelemetryToken) < 8) return;
+   Print(InpTelemetryUrl);
+}
+`,
+    expectCode: "mql5_undeclared_input",
+  },
 ];
 
 let failures = 0;
