@@ -44,9 +44,13 @@ const QUOTAS = {
 // persistent quota still enforces correctness; this layer is just a
 // cheap first-line guard against accidental loops.
 //
-// Window: 60 seconds. Limit: 10 requests. ~1 req / 6s steady-state.
+// Window: 60 seconds. Limit: 45 requests. Chosen to match the
+// client-side agentic loop (lib/ai/client MAX_STEPS = 40) plus a
+// small headroom for a user who sends a follow-up message mid-build.
+// Previous value of 10 was tuned for single-turn chats and starved
+// multi-step builds (users saw "retry in Ns" mid-build).
 const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_MAX = 45;
 const rateBuckets = new Map<string, { windowStart: number; count: number }>();
 
 function checkRateLimit(userId: string): { allowed: boolean; retryAfterSec: number } {

@@ -74,6 +74,7 @@ type UiMessage =
   | { kind: "assistant"; blocks: AiContentBlock[] }
   | { kind: "tool"; label: string; status: "running" | "ok" | "error"; detail?: string }
   | { kind: "done"; summary: DoneSummary }
+  | { kind: "throttled"; secondsLeft: number }
   | { kind: "error"; text: string; upgradeTo?: "pro" | "creator" };
 
 type View = "chat" | "history";
@@ -693,6 +694,18 @@ function MessageBubble({ m }: { m: UiMessage }) {
   if (m.kind === "done") {
     return <DoneCard summary={m.summary} />;
   }
+  if (m.kind === "throttled") {
+    // Soft, non-alarming chip shown while we wait out the burst
+    // limiter. The countdown animates in-place (see runAgenticLoop).
+    return (
+      <div className="flex items-center gap-2 text-[11px] text-gray-500">
+        <Loader2 size={11} className="animate-spin text-amber-500 shrink-0" />
+        <span>
+          Pacing the AI — resuming in <span className="font-600 text-gray-700">{m.secondsLeft}s</span>
+        </span>
+      </div>
+    );
+  }
   if (m.kind === "error") {
     return (
       <div className="rounded-xl border border-red-100 bg-red-50/60 px-3 py-2 text-xs text-red-700">
@@ -940,6 +953,39 @@ async function runAgenticLoop(
       return activeConvoId ? { conversationId: activeConvoId, conversationTitle: firstTitle } : null;
     }
     if (!data.ok) {
+      // Burst rate-limit: the server is asking us to back off for a few
+      // seconds. In a long agentic build this is normal when Claude
+      // fires many tool_use turns back-to-back. Auto-retry silently
+      // with a live countdown chip instead of surfacing an error —
+      // quota_exceeded / ai_failed / unauthorized still hard-fail.
+      if (data.error === "rate_limited") {
+        const wait = Math.max(1, Math.min(60, (data as { retryAfterSec?: number }).retryAfterSec ?? 5));
+        // Push a throttled chip and tick it down each second.
+        setUi((m) => [...m, { kind: "throttled", secondsLeft: wait }]);
+        for (let remaining = wait; remaining > 0; remaining--) {
+          if (opts.abortRef.aborted) {
+            return activeConvoId ? { conversationId: activeConvoId, conversationTitle: firstTitle } : null;
+          }
+          // Mutate the last throttled chip in place so the countdown
+          // animates without scrolling the transcript.
+          setUi((m) => {
+            const next = [...m];
+            for (let i = next.length - 1; i >= 0; i--) {
+              if (next[i].kind === "throttled") {
+                next[i] = { kind: "throttled", secondsLeft: remaining };
+                break;
+              }
+            }
+            return next;
+          });
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+        // Drop the chip, then redo this step. `step` isn't incremented
+        // because the `for (step)` loop only advances on normal flow.
+        setUi((m) => m.filter((x, i, arr) => !(x.kind === "throttled" && i === arr.length - 1)));
+        step--;
+        continue;
+      }
       setUi((m) => [
         ...m,
         {

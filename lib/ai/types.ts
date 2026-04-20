@@ -84,9 +84,12 @@ export interface AiChatErrorResponse {
     | "quota_exceeded"
     | "ai_failed"
     | "bad_request"
-    | "tier_not_allowed";
+    | "tier_not_allowed"
+    | "rate_limited";
   message: string;
   upgradeTo?: "pro" | "creator";
+  /** Seconds until the burst limiter releases. Only set on error="rate_limited". */
+  retryAfterSec?: number;
 }
 
 export type AiChatResponse = AiChatOkResponse | AiChatErrorResponse;
