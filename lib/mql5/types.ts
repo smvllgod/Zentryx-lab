@@ -81,6 +81,21 @@ export interface CompileOptions {
   /** Optional override for EA name. Defaults to graph.metadata.name. */
   eaName?: string;
   /**
+   * Presentation options for the MT5 Inputs tab. Controls section
+   * separator style and whether PRODUCT INFO is populated. Default
+   * preset is "professional" — sober ASCII separators, no emojis.
+   * See `lib/mql5/input-presenter.ts` for the full behaviour.
+   */
+  presentation?: {
+    preset?: "professional" | "premium_seller" | "institutional";
+    product?: {
+      name?: string;
+      version?: string;
+      vendor?: string;
+      supportUrl?: string;
+    };
+  };
+  /**
    * Protection Panel configuration — optional. When provided, the
    * compiler emits MQL5 code enforcing each enabled protection block
    * (account lock, expiry, license key, etc.) alongside the canvas

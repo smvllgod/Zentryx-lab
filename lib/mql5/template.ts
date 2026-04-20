@@ -1,11 +1,21 @@
 import type { SectionContribution, SignalDirection, CompileOptions } from "./types";
 import type { StrategyGraph } from "@/lib/strategies/types";
+import { presentInputs, type PresenterPreset, type SectionedInput } from "./input-presenter";
 
 interface AssemblerInput {
   eaName: string;
   graph: StrategyGraph;
   contributions: SectionContribution[];
   telemetry?: CompileOptions["telemetry"];
+  /** Presentation preset for the inputs block. Default: "professional". */
+  presenterPreset?: PresenterPreset;
+  /** Optional product metadata — populates PRODUCT INFO section. */
+  product?: {
+    name?: string;
+    version?: string;
+    vendor?: string;
+    supportUrl?: string;
+  };
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -17,7 +27,7 @@ interface AssemblerInput {
 // ──────────────────────────────────────────────────────────────────
 
 export function assemble(input: AssemblerInput): string {
-  const { eaName, graph, contributions, telemetry } = input;
+  const { eaName, graph, contributions, telemetry, presenterPreset, product } = input;
   const inputs = mergeInputs(contributions);
   const indicators = mergeIndicators(contributions);
   const helpers = mergeHelpers(contributions);
@@ -41,6 +51,107 @@ export function assemble(input: AssemblerInput): string {
   const telemetryHelpers = telemetryEnabled ? telemetryHelpersBlock() : "";
   const telemetryHandler = telemetryEnabled ? telemetryHandlerBlock() : "";
 
+  // ──────────────────────────────────────────────────────────────────
+  // Build the presenter-ready input list.
+  // ──────────────────────────────────────────────────────────────────
+  // Strategy-core inputs (symbol / timeframe / magic / trade comment)
+  // live in template.ts — not in any translator — so we inject them
+  // here with an explicit `section: "strategy_core"`. Telemetry inputs
+  // are the same story: only template.ts knows whether telemetry is
+  // wired in, and they need to appear before the telemetry helper
+  // block which references them by name.
+  const coreInputs: SectionedInput[] = [
+    {
+      name: "InpSymbolHint",
+      type: "string",
+      defaultExpr: `"${escapeStr(sym)}"`,
+      label: "Preferred Symbol",
+      section: "strategy_core",
+      orderHint: -10,
+    },
+    {
+      // Placeholder declaration — `ENUM_TIMEFRAMES` isn't part of
+      // InputDecl's narrow type union, so we stamp a syntactically
+      // valid `input string` line and post-replace it with the proper
+      // enum-typed declaration below.
+      name: "InpTimeframe",
+      type: "string",
+      defaultExpr: `"__ENUM_TIMEFRAME_PLACEHOLDER__"`,
+      label: "Working Timeframe",
+      section: "strategy_core",
+      orderHint: -9,
+    },
+    {
+      name: "InpMagic",
+      type: "int", // template originally declared as `long`; int is close enough for presenter bucketing
+      defaultExpr: String(magic),
+      label: "Magic Number",
+      section: "strategy_core",
+      orderHint: -8,
+    },
+    {
+      name: "InpTradeComment",
+      type: "string",
+      defaultExpr: `"${escapeStr(graph.metadata.tradeComment ?? "Zentryx Lab")}"`,
+      label: "Trade Comment",
+      section: "strategy_core",
+      orderHint: -7,
+    },
+  ];
+  const telemetryInputs: SectionedInput[] = telemetryEnabled
+    ? [
+        {
+          name: "InpTelemetryOn",
+          type: "bool",
+          defaultExpr: "true",
+          label: "Report Trades to Zentryx Lab",
+          section: "execution",
+        },
+        {
+          name: "InpTelemetryUrl",
+          type: "string",
+          defaultExpr: `"${escapeStr(telemetryUrl)}"`,
+          label: "Telemetry Endpoint",
+          section: "execution",
+        },
+        {
+          name: "InpTelemetryToken",
+          type: "string",
+          defaultExpr: `"${escapeStr(telemetryToken)}"`,
+          label: "Telemetry Token",
+          section: "execution",
+        },
+      ]
+    : [];
+
+  // Assemble the final input list for the presenter. Order matters
+  // only within a section (presenter sorts by section first).
+  const allInputs: SectionedInput[] = [
+    ...coreInputs,
+    ...telemetryInputs,
+    ...(inputs as SectionedInput[]),
+  ];
+  const inputsRendered = presentInputs(allInputs, {
+    preset: presenterPreset ?? "professional",
+    product,
+  });
+  // Patch the ENUM_TIMEFRAMES declaration the presenter can't express
+  // natively (its InputDecl.type is a narrow union). The placeholder
+  // below is replaced with a properly-typed MQL5 line that MetaEditor
+  // recognises as an enum-backed input.
+  const timeframeLine = `input ENUM_TIMEFRAMES InpTimeframe = ${timeframeEnum(tf)};`;
+  const inputsSection = inputsRendered
+    .replace(
+      /input string InpTimeframe = "__ENUM_TIMEFRAME_PLACEHOLDER__";.*/,
+      `${timeframeLine} // Working Timeframe`,
+    )
+    // InpMagic was declared as `long` in the legacy template — keep it
+    // that way so existing EAs don't break on overflow edge-cases.
+    .replace(
+      /input int InpMagic = /,
+      "input long InpMagic = ",
+    );
+
   return `//+------------------------------------------------------------------+
 //|  ${escapeComment(eaName)}.mq5
 //|  Generated by Zentryx Lab on ${new Date().toISOString()}
@@ -55,16 +166,7 @@ export function assemble(input: AssemblerInput): string {
 //─────────────────────────────────────────────────────────────────────
 // Inputs
 //─────────────────────────────────────────────────────────────────────
-input string  InpSymbolHint = "${sym}";        // Symbol hint (informational)
-input ENUM_TIMEFRAMES InpTimeframe = ${timeframeEnum(tf)};   // Working timeframe
-input long    InpMagic       = ${magic};        // Magic number
-input string  InpTradeComment = "${escapeStr(graph.metadata.tradeComment ?? "Zentryx Lab")}"; // Trade comment
-${telemetryEnabled ? `
-// ── Live telemetry (Zentryx Lab) ───────────────────────────────────
-input string  InpTelemetryUrl   = "${escapeStr(telemetryUrl)}";
-input string  InpTelemetryToken = "${escapeStr(telemetryToken)}";
-input bool    InpTelemetryOn    = true;          // Report closed trades to Zentryx Lab
-` : ""}${inputsBlock(inputs)}
+${inputsSection}
 
 //─────────────────────────────────────────────────────────────────────
 // Indicator handles
@@ -317,13 +419,6 @@ function pickSingleStop(cs: SectionContribution[]): string {
   for (const c of cs) if (c.stopLevels) return c.stopLevels.body;
   // Default: no SL/TP
   return "// no stop levels configured\nslPrice = 0.0; tpPrice = 0.0;";
-}
-
-function inputsBlock(inputs: NonNullable<SectionContribution["inputs"]>): string {
-  if (inputs.length === 0) return "// (no node inputs)";
-  return inputs
-    .map((i) => `input ${i.type} ${i.name} = ${i.defaultExpr};${i.label ? ` // ${i.label}` : ""}`)
-    .join("\n");
 }
 
 function indent(text: string, spaces: number): string {

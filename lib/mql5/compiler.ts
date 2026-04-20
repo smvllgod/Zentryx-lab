@@ -67,6 +67,19 @@ export function compileStrategy(
     }
     try {
       const c = translator(node, graph);
+      // Stamp each emitted input with its originating nodeType so the
+      // input presenter can place it in the right section when the
+      // translator didn't set `section` explicitly. Non-destructive —
+      // we clone the inputs array so translators stay pure.
+      if (c.inputs && c.inputs.length > 0) {
+        c.inputs = c.inputs.map((inp) =>
+          // Only stamp when not already set — gives translators a way
+          // to override (e.g. product/license inputs).
+          (inp as { nodeType?: string }).nodeType
+            ? inp
+            : ({ ...inp, nodeType: node.type } as typeof inp),
+        );
+      }
       contributions[node.id] = c;
       collected.push(c);
     } catch (err) {
@@ -127,6 +140,8 @@ export function compileStrategy(
     graph,
     contributions: collected,
     telemetry: options.telemetry,
+    presenterPreset: options.presentation?.preset,
+    product: options.presentation?.product,
   });
 
   // Post-pass: static-scan the generated source for known MQL5 compile
