@@ -12,7 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/select";
+import { CustomSelect } from "@/components/ui/custom-select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth/context";
@@ -162,16 +162,13 @@ export default function BacktestPage() {
           <Card>
             <CardContent>
               <SectionHeader step={1} icon={<Settings2 size={12} />} title="Strategy" />
-              <NativeSelect
+              <CustomSelect
                 value={strategyId}
-                onChange={(e) => setStrategyId(e.target.value)}
+                onChange={setStrategyId}
                 disabled={strategies.length === 0}
-              >
-                {strategies.length === 0 && <option value="">No strategies — create one first</option>}
-                {strategies.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </NativeSelect>
+                placeholder={strategies.length === 0 ? "No strategies — create one first" : "Pick a strategy…"}
+                options={strategies.map((s) => ({ value: s.id, label: s.name, hint: s.status }))}
+              />
               {currentStrategy && (
                 <div className="mt-2 flex items-center gap-2 text-[11px] text-gray-500">
                   <Badge tone="default">{nodeCount} nodes</Badge>
@@ -219,20 +216,25 @@ export default function BacktestPage() {
                 <div className="mt-3 space-y-3">
                   <div>
                     <Label htmlFor="bt-symbol">Symbol</Label>
-                    <NativeSelect id="bt-symbol" value={symbol} onChange={(e) => setSymbol(e.target.value)}>
-                      {SYMBOL_GROUPS.map((g) => (
-                        <optgroup key={g.label} label={g.label}>
-                          {g.symbols.map((s) => <option key={s} value={s}>{s}</option>)}
-                        </optgroup>
-                      ))}
-                    </NativeSelect>
+                    <CustomSelect
+                      id="bt-symbol"
+                      value={symbol}
+                      onChange={setSymbol}
+                      groups={SYMBOL_GROUPS.map((g) => ({
+                        label: g.label,
+                        options: g.symbols.map((s) => ({ value: s, label: s })),
+                      }))}
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <Label htmlFor="bt-tf">Timeframe</Label>
-                      <NativeSelect id="bt-tf" value={timeframe} onChange={(e) => setTimeframe(e.target.value as Timeframe)}>
-                        {BUILTIN_TIMEFRAMES.map((t) => <option key={t} value={t}>{t}</option>)}
-                      </NativeSelect>
+                      <CustomSelect
+                        id="bt-tf"
+                        value={timeframe}
+                        onChange={(v) => setTimeframe(v as Timeframe)}
+                        options={BUILTIN_TIMEFRAMES.map((t) => ({ value: t, label: t }))}
+                      />
                     </div>
                     <div>
                       <Label htmlFor="bt-bars">Bars</Label>
@@ -286,9 +288,12 @@ export default function BacktestPage() {
                     </div>
                     <div>
                       <Label htmlFor="bt-tf2">Timeframe</Label>
-                      <NativeSelect id="bt-tf2" value={timeframe} onChange={(e) => setTimeframe(e.target.value as Timeframe)}>
-                        {BUILTIN_TIMEFRAMES.map((t) => <option key={t} value={t}>{t}</option>)}
-                      </NativeSelect>
+                      <CustomSelect
+                        id="bt-tf2"
+                        value={timeframe}
+                        onChange={(v) => setTimeframe(v as Timeframe)}
+                        options={BUILTIN_TIMEFRAMES.map((t) => ({ value: t, label: t }))}
+                      />
                     </div>
                   </div>
                 </div>

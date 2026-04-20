@@ -25,7 +25,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { NativeSelect } from "@/components/ui/select";
+import { CustomSelect } from "@/components/ui/custom-select";
 import { Input } from "@/components/ui/input";
 import { TrustBadge } from "@/components/profiles/TrustBadge";
 import { FeedList } from "@/components/community/FeedList";
@@ -196,12 +196,15 @@ function ForumSection({ userId }: { userId: string | null }) {
             <MessagesSquare size={14} className="text-blue-600" /> Threads
           </h2>
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <NativeSelect value={category} onChange={(e) => setCategory(e.target.value)} className="min-w-0">
-              <option value="">All categories</option>
-              {categories.map((c) => (
-                <option key={c.slug} value={c.slug}>{c.label}</option>
-              ))}
-            </NativeSelect>
+            <CustomSelect
+              value={category}
+              onChange={setCategory}
+              className="w-36"
+              options={[
+                { value: "", label: "All categories" },
+                ...categories.map((c) => ({ value: c.slug, label: c.label })),
+              ]}
+            />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}

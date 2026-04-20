@@ -5,6 +5,7 @@ import { Heart, MessageSquare, Trash2, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm";
 import { useAuth } from "@/lib/auth/context";
 import {
   toggleFeedLike, listFeedComments, createFeedComment, deleteFeedComment, softDeleteFeedPost,
@@ -15,6 +16,7 @@ import { cn } from "@/lib/utils/cn";
 
 export function FeedCard({ post, onDeleted }: { post: FeedPost; onDeleted?: (id: string) => void }) {
   const { user } = useAuth();
+  const { confirm } = useConfirm();
   const [liked, setLiked] = useState(Boolean(post.liked_by_me));
   const [likeCount, setLikeCount] = useState(post.like_count);
   const [commentCount, setCommentCount] = useState(post.comment_count);
@@ -78,7 +80,13 @@ export function FeedCard({ post, onDeleted }: { post: FeedPost; onDeleted?: (id:
   }
 
   async function deletePost() {
-    if (!confirm("Delete this post?")) return;
+    const ok = await confirm({
+      title: "Delete this post?",
+      body: "Your post is removed from the feed. Comments and likes go with it. This can't be undone.",
+      destructive: true,
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       await softDeleteFeedPost(post.id);

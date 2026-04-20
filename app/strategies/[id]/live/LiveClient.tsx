@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm";
 import { useAuth } from "@/lib/auth/context";
 import { getStrategy } from "@/lib/strategies/store";
 import {
@@ -46,6 +47,7 @@ export default function LiveClient() {
 
 function LiveInner({ id }: { id: string }) {
   const { user } = useAuth();
+  const { confirm } = useConfirm();
 
   const [loading, setLoading] = useState(true);
   const [strategyName, setStrategyName] = useState("");
@@ -123,7 +125,13 @@ function LiveInner({ id }: { id: string }) {
 
   async function handleRotate() {
     if (!id) return;
-    if (!confirm("Rotating will break any EA copy still running on the old token. Continue?")) return;
+    const ok = await confirm({
+      title: "Rotate telemetry token?",
+      body: "Any EA copy still running on the old token will stop reporting until you re-export and redeploy it.",
+      destructive: true,
+      confirmLabel: "Rotate token",
+    });
+    if (!ok) return;
     setRotating(true);
     try {
       const newToken = await rotateTelemetryToken(id);

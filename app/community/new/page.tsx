@@ -15,7 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { NativeSelect } from "@/components/ui/select";
+import { CustomSelect } from "@/components/ui/custom-select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toast";
 import { useAuth } from "@/lib/auth/context";
@@ -139,11 +139,16 @@ export default function NewPostPage() {
             <form onSubmit={submit} className="space-y-4">
               <div>
                 <Label htmlFor="cat">Category</Label>
-                <NativeSelect id="cat" value={categorySlug} onChange={(e) => setCategorySlug(e.target.value)}>
-                  {categories.map((c) => (
-                    <option key={c.slug} value={c.slug}>{c.label}</option>
-                  ))}
-                </NativeSelect>
+                <CustomSelect
+                  id="cat"
+                  value={categorySlug}
+                  onChange={setCategorySlug}
+                  options={categories.map((c) => ({
+                    value: c.slug,
+                    label: c.label,
+                    hint: c.description ?? undefined,
+                  }))}
+                />
                 {categories.find((c) => c.slug === categorySlug)?.description && (
                   <p className="text-[11px] text-gray-500 mt-1.5">
                     {categories.find((c) => c.slug === categorySlug)!.description}

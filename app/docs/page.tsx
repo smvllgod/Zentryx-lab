@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   Circle,
   Hexagon,
+  Users,
 } from "lucide-react";
 import {
   NODE_DEFINITIONS,
@@ -46,6 +47,7 @@ type Section =
   | "mql5-export"
   | "license"
   | "marketplace"
+  | "community"
   | "strategy-tester"
   | "backtest"
   | "plans"
@@ -68,6 +70,7 @@ const SECTIONS: { id: Section; label: string; icon: React.ReactNode; group?: str
   { id: "strategy-tester", label: "MT5 Strategy Tester", icon: <Download size={14} />, group: "Ship" },
 
   { id: "marketplace", label: "Marketplace", icon: <Hexagon size={14} />, group: "Distribute" },
+  { id: "community", label: "Community (Feed & Forum)", icon: <Users size={14} />, group: "Distribute" },
 
   { id: "plans", label: "Plans & limits", icon: <CheckCircle2 size={14} />, group: "Reference" },
   { id: "faq", label: "FAQ", icon: <Book size={14} />, group: "Reference" },
@@ -228,6 +231,7 @@ export default function DocsPage() {
           {active === "appearance" && <AppearanceDocs />}
           {active === "license" && <LicenseDocs />}
           {active === "marketplace" && <MarketplaceDocs />}
+          {active === "community" && <CommunityDocs />}
           {active === "nodes" && (
             <NodeReference nodes={filteredNodes} query={query} onQueryChange={setQuery} totalCount={NODE_DEFINITIONS.length} />
           )}
@@ -1426,6 +1430,105 @@ function MarketplaceDocs() {
           <Bullet>One review per user per listing — editable and deletable by the author.</Bullet>
           <Bullet>Star rating (1–5) + optional body up to 1500 characters.</Bullet>
           <Bullet>Listing aggregated rating updates automatically via database trigger.</Bullet>
+        </ul>
+      </CardContent></Card>
+    </article>
+  );
+}
+
+function CommunityDocs() {
+  return (
+    <article className="prose-docs space-y-6">
+      <SectionHeader
+        title="Community — Feed & Forum"
+        subtitle="Two distinct surfaces. Feed for fast social posts, Forum for deep threaded discussions."
+      />
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">What each surface is for</h3>
+        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3">
+            <div className="text-xs font-700 text-emerald-800">Feed — the fast lane</div>
+            <p className="mt-1 text-[12px] text-gray-700 leading-snug">
+              Short, status-style posts with optional images (up to 4, 5 MB each).
+              Likes and inline comments. No category, no approval queue — everything
+              goes live instantly, subject to AI post-moderation.
+            </p>
+            <p className="mt-2 text-[11px] text-gray-500">Think: setups, screenshots, backtest results, quick wins, quick questions.</p>
+          </div>
+          <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-3">
+            <div className="text-xs font-700 text-blue-800">Forum — threaded discussions</div>
+            <p className="mt-1 text-[12px] text-gray-700 leading-snug">
+              Long-form posts organized by category. Markdown supported.
+              Every post is reviewed (AI moderator first, human moderator if it
+              needs review) before appearing on the public feed.
+            </p>
+            <p className="mt-2 text-[11px] text-gray-500">Think: deep dives, specific topics, tutorials, help threads you want searchable later.</p>
+          </div>
+        </div>
+      </CardContent></Card>
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">AI moderation</h3>
+        <p className="text-sm text-gray-600 mt-2">
+          Every new post (Feed and Forum) is sent through an AI classifier the moment it's
+          created. The AI applies one of three decisions:
+        </p>
+        <ul className="mt-3 space-y-2">
+          <Bullet><strong>Approve</strong> — legitimate trading content. On the Forum, the post is auto-approved and appears publicly without waiting for a human reviewer. On the Feed it stays live.</Bullet>
+          <Bullet><strong>Needs review</strong> — borderline cases. Forum posts stay <code>pending</code> for a human to decide. Feed posts remain live but get a soft flag.</Bullet>
+          <Bullet><strong>Reject</strong> — spam, drive-by promotion of unrelated products, scams, NSFW / hate. On the Forum the post is marked rejected with the AI's reason. On the Feed the post is soft-deleted (disappears from the public feed).</Bullet>
+        </ul>
+        <p className="mt-3 text-xs text-gray-500">
+          Safety net: if the AI moderator has a parse error or the Anthropic API is unreachable,
+          we never auto-reject. The post falls back to <em>needs review</em> and waits for a human.
+        </p>
+      </CardContent></Card>
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">What's allowed</h3>
+        <ul className="mt-3 space-y-2">
+          <Bullet>Trading ideas, setups, backtest screenshots, live results, tick-level observations.</Bullet>
+          <Bullet>Questions with context — specific symbol, timeframe, what you tried, what happened.</Bullet>
+          <Bullet>Announcements about your own Zentryx Lab free or paid strategies (sparingly — one post per launch, with substance).</Bullet>
+          <Bullet>Multilingual posts — French, Spanish, Arabic, anything. The moderator is language-agnostic.</Bullet>
+          <Bullet>Respectful disagreement, good-faith feedback on other creators' work.</Bullet>
+        </ul>
+      </CardContent></Card>
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">What will get rejected</h3>
+        <ul className="mt-3 space-y-2">
+          <Bullet><strong>Spam</strong> — affiliate dumps, repeated copy-pastes, unrelated products.</Bullet>
+          <Bullet><strong>Drive-by promotion</strong> of signals, courses, or services that don't relate to Zentryx Lab.</Bullet>
+          <Bullet><strong>Scams</strong> — "send X$ and I'll show you", pyramid-style pitches, guaranteed-returns nonsense.</Bullet>
+          <Bullet><strong>NSFW, hate, harassment</strong> — zero tolerance.</Bullet>
+          <Bullet><strong>Low-effort content</strong> — a single emoji, a naked link with no context, one-word posts.</Bullet>
+        </ul>
+        <p className="mt-3 text-xs text-gray-500">
+          If your post is rejected and you think the moderator got it wrong, DM a moderator
+          or <a href="/contact" className="text-emerald-600">contact support</a>. False positives happen; humans override them.
+        </p>
+      </CardContent></Card>
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">Announcements (admin-only)</h3>
+        <p className="text-sm text-gray-600 mt-2">
+          The <strong>Announcements</strong> category on the Forum is gated: only admin accounts
+          can post there. The category doesn't appear in the composer dropdown for regular
+          users, and the database rejects non-admin inserts at the trigger level even if the
+          client is tampered with. Admin announcements bypass the moderation queue and
+          appear publicly the moment they're written.
+        </p>
+      </CardContent></Card>
+
+      <Card><CardContent>
+        <h3 className="text-base font-700 text-gray-900">Tips for getting approved fast</h3>
+        <ul className="mt-3 space-y-2">
+          <Bullet>Be specific. <em>"I backtested EMA cross on EURUSD H1 from 2022-2024, PF = 1.3"</em> beats <em>"works great"</em>.</Bullet>
+          <Bullet>Add a screenshot. Visual context makes a post easier for the AI to classify as genuine.</Bullet>
+          <Bullet>If you mention a listing you sell, add a thought — <em>why</em> you built it that way, or what edge case it handles.</Bullet>
+          <Bullet>One post per launch announcement. The AI flags launch-ad spam when the same user posts three variants in an hour.</Bullet>
         </ul>
       </CardContent></Card>
     </article>
