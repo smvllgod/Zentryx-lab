@@ -1,18 +1,24 @@
 "use client";
 
 // ──────────────────────────────────────────────────────────────────
-// /community  — leaderboard + feed + forum index
+// /community  —  Feed  |  Forum  |  Leaderboard
 // ──────────────────────────────────────────────────────────────────
-// Three sections:
-//   • Creator leaderboard (top by trust score).
-//   • Forum — approved posts grouped by category.
-//   • Recent activity feed (new listings, new reviews).
-// ──────────────────────────────────────────────────────────────────
+// Two distinct surfaces:
+//
+//  • FEED    — short social posts with images / reactions / comments.
+//              Public, no moderation queue, soft-delete by author.
+//              Use for setups, screenshots, quick thoughts, updates.
+//  • FORUM   — long-form threaded discussions organized by category
+//              (Strategy, MQL5, Marketplace, Off-topic, etc.) with
+//              admin moderation. Use for specific topics that need
+//              structure, context, and search-ability over time.
+//
+// The sidebar keeps the creator leaderboard + guidelines.
 
 import { useEffect, useMemo, useState } from "react";
 import {
   MessageCircle, Plus, ShoppingBag, Star, Users, ArrowRight, Crown,
-  TrendingUp, Sparkles, ShieldCheck,
+  TrendingUp, Sparkles, ShieldCheck, Rss, MessagesSquare, Info,
 } from "lucide-react";
 import { PublicShell } from "@/components/app/public-shell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,30 +28,131 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { NativeSelect } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { TrustBadge } from "@/components/profiles/TrustBadge";
+import { FeedList } from "@/components/community/FeedList";
 import { useAuth } from "@/lib/auth/context";
 import { fetchLeaderboard, type CreatorStats } from "@/lib/profiles/client";
 import { listCategories, listApprovedPosts, type ForumCategory, type PostWithAuthor } from "@/lib/forum/client";
-import { getSupabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import { formatRelative } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 
-interface FeedItem {
-  event_type: "listing" | "review";
-  subject_id: string;
-  actor_id: string;
-  title: string;
-  body: string | null;
-  event_at: string;
-}
+type Tab = "feed" | "forum";
 
 export default function CommunityPage() {
   const { user } = useAuth();
-  const [leaderboard, setLeaderboard] = useState<CreatorStats[]>([]);
+  const [tab, setTab] = useState<Tab>("feed");
+
+  return (
+    <PublicShell>
+      <div className="max-w-6xl mx-auto px-5 lg:px-8 py-6 lg:py-8">
+        {/* ── Header ─────────────────────────────────────────── */}
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
+          <div>
+            <div className="inline-flex items-center gap-1.5 text-[10px] font-700 uppercase tracking-widest text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2.5 py-0.5">
+              <Users size={10} /> Community
+            </div>
+            <h1 className="mt-3 text-2xl sm:text-3xl font-800 text-gray-900 tracking-tight">
+              Where Zentryx creators gather
+            </h1>
+            <p className="mt-1.5 text-sm text-gray-500 max-w-xl">
+              Share what you&apos;re building in the <strong className="text-gray-700">Feed</strong>.
+              Dive deep into specific topics in the <strong className="text-gray-700">Forum</strong>.
+            </p>
+          </div>
+        </div>
+
+        {/* ── Tabs ───────────────────────────────────────────── */}
+        <div className="mb-5 inline-flex rounded-xl border border-gray-200 overflow-hidden bg-white">
+          <TabButton active={tab === "feed"} onClick={() => setTab("feed")} icon={<Rss size={13} />} label="Feed" subtitle="Quick posts + images" />
+          <TabButton active={tab === "forum"} onClick={() => setTab("forum")} icon={<MessagesSquare size={13} />} label="Forum" subtitle="Threaded, moderated" />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-4 lg:gap-6 items-start">
+          {/* ── Main column ─────────────────────────────────── */}
+          <div className="space-y-5 min-w-0">
+            {tab === "feed" ? (
+              <>
+                <ExplainBand
+                  kind="feed"
+                  title="Feed — the fast lane"
+                  body="Post setups, backtest screenshots, quick wins and short thoughts. No category, no approval queue — everything goes live instantly. Think Twitter, not Stack Overflow."
+                />
+                <FeedList />
+              </>
+            ) : (
+              <>
+                <ExplainBand
+                  kind="forum"
+                  title="Forum — deep discussions"
+                  body="Organized by category (Strategy, MQL5, Marketplace, Off-topic). Markdown-supported, searchable, moderator-reviewed. Use for specific topics that need context and a permanent address."
+                />
+                <ForumSection userId={user?.id ?? null} />
+              </>
+            )}
+          </div>
+
+          {/* ── Sidebar ────────────────────────────────────── */}
+          <Sidebar />
+        </div>
+      </div>
+    </PublicShell>
+  );
+}
+
+// ── Tab button ─────────────────────────────────────────────────────
+
+function TabButton({
+  active, onClick, icon, label, subtitle,
+}: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string; subtitle: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "px-4 py-2.5 text-left transition-colors",
+        active ? "bg-gray-900 text-white" : "bg-white text-gray-700 hover:bg-gray-50",
+      )}
+    >
+      <div className="inline-flex items-center gap-1.5 text-xs font-700">
+        {icon} {label}
+      </div>
+      <div className={cn("text-[10px]", active ? "text-gray-300" : "text-gray-400")}>
+        {subtitle}
+      </div>
+    </button>
+  );
+}
+
+// ── Explain band (top of each tab) ────────────────────────────────
+
+function ExplainBand({ kind, title, body }: { kind: "feed" | "forum"; title: string; body: string }) {
+  return (
+    <div className={cn(
+      "rounded-xl border p-3 flex items-start gap-3",
+      kind === "feed" ? "border-emerald-200 bg-emerald-50/40" : "border-blue-200 bg-blue-50/40",
+    )}>
+      <div className={cn(
+        "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+        kind === "feed" ? "bg-emerald-100 text-emerald-600" : "bg-blue-100 text-blue-600",
+      )}>
+        {kind === "feed" ? <Rss size={14} /> : <MessagesSquare size={14} />}
+      </div>
+      <div className="min-w-0">
+        <div className={cn(
+          "text-xs font-700",
+          kind === "feed" ? "text-emerald-800" : "text-blue-800",
+        )}>{title}</div>
+        <p className="mt-0.5 text-[11px] text-gray-600 leading-snug">{body}</p>
+      </div>
+    </div>
+  );
+}
+
+// ── Forum section ─────────────────────────────────────────────────
+
+function ForumSection({ userId }: { userId: string | null }) {
   const [categories, setCategories] = useState<ForumCategory[]>([]);
   const [posts, setPosts] = useState<PostWithAuthor[]>([]);
-  const [feed, setFeed] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
-
   const [category, setCategory] = useState<string>("");
   const [search, setSearch] = useState("");
 
@@ -54,17 +161,13 @@ export default function CommunityPage() {
     (async () => {
       setLoading(true);
       try {
-        const [lb, cats, ps, fd] = await Promise.all([
-          fetchLeaderboard(10),
+        const [cats, ps] = await Promise.all([
           listCategories(),
-          listApprovedPosts({ limit: 20 }),
-          loadFeed(),
+          listApprovedPosts({ limit: 30 }),
         ]);
         if (!alive) return;
-        setLeaderboard(lb);
         setCategories(cats);
         setPosts(ps);
-        setFeed(fd);
       } finally {
         if (alive) setLoading(false);
       }
@@ -75,139 +178,72 @@ export default function CommunityPage() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const ps = await listApprovedPosts({ limit: 30, category: category || undefined, search: search || undefined });
+      const ps = await listApprovedPosts({
+        limit: 30,
+        category: category || undefined,
+        search: search || undefined,
+      });
       if (alive) setPosts(ps);
     })();
     return () => { alive = false; };
   }, [category, search]);
 
   return (
-    <PublicShell>
-      <div className="max-w-6xl mx-auto px-5 lg:px-8 py-8">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <div className="inline-flex items-center gap-1.5 text-[10px] font-700 uppercase tracking-widest text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2.5 py-0.5">
-              <Users size={10} /> Community
-            </div>
-            <h1 className="mt-3 text-2xl sm:text-3xl font-700 text-gray-900">Trade ideas, systems, and setups</h1>
-            <p className="mt-1.5 text-sm text-gray-500 max-w-xl">Creators, backtests, discussion. Posts are reviewed before publishing to keep the feed clean.</p>
-          </div>
-          <Button asChild>
-            <a href={user ? "/community/new" : "/sign-in?returnTo=/community/new"}>
-              <Plus size={14} /> New post
-            </a>
-          </Button>
-        </div>
-
-        <div className="mt-6 sm:mt-8 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-4 lg:gap-6 items-start">
-          {/* Main: forum + feed */}
-          <div className="space-y-6 min-w-0">
-            {/* Forum filters */}
-            <Card>
-              <CardContent>
-                <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <h2 className="text-sm font-700 text-gray-900 inline-flex items-center gap-1.5">
-                    <MessageCircle size={14} className="text-emerald-600" /> Forum
-                  </h2>
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <NativeSelect value={category} onChange={(e) => setCategory(e.target.value)} className="min-w-0">
-                      <option value="">All categories</option>
-                      {categories.map((c) => (
-                        <option key={c.slug} value={c.slug}>{c.label}</option>
-                      ))}
-                    </NativeSelect>
-                    <Input
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search…"
-                      className="flex-1 sm:w-56 sm:flex-initial"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  {loading ? (
-                    <div className="py-10 text-center text-xs text-gray-400">Loading…</div>
-                  ) : posts.length === 0 ? (
-                    <EmptyState
-                      icon={<MessageCircle size={18} />}
-                      title="No posts yet"
-                      description={search || category ? "Try a different filter." : "Be the first to start the conversation."}
-                      action={
-                        <Button asChild size="sm">
-                          <a href={user ? "/community/new" : "/sign-in?returnTo=/community/new"}>
-                            <Plus size={12} /> New post
-                          </a>
-                        </Button>
-                      }
-                    />
-                  ) : (
-                    <ul className="divide-y divide-gray-100">
-                      {posts.map((p) => (
-                        <PostPreview key={p.id} post={p} categories={categories} />
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Recent activity feed */}
-            <Card>
-              <CardContent>
-                <h2 className="text-sm font-700 text-gray-900 inline-flex items-center gap-1.5">
-                  <Sparkles size={14} className="text-emerald-600" /> Recent activity
-                </h2>
-                <ul className="mt-4 space-y-2.5">
-                  {feed.length === 0 && (
-                    <li className="text-xs text-gray-400 py-3">Nothing yet — publish a listing or leave a review.</li>
-                  )}
-                  {feed.slice(0, 10).map((e) => (
-                    <FeedRow key={e.event_type + e.subject_id + e.event_at} event={e} />
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Sidebar: leaderboard */}
-          <div className="space-y-4">
-            <Card>
-              <CardContent>
-                <div className="flex items-center gap-1.5">
-                  <Crown size={14} className="text-amber-500" />
-                  <h2 className="text-sm font-700 text-gray-900">Top creators</h2>
-                </div>
-                <p className="text-[11px] text-gray-500 mt-0.5">Ranked by trust score — sales, listings, reviews, and tenure.</p>
-                <ul className="mt-3 space-y-1">
-                  {leaderboard.length === 0 && (
-                    <li className="text-[11px] text-gray-400 py-2">No creators yet.</li>
-                  )}
-                  {leaderboard.map((c, i) => <LeaderRow key={c.user_id} rank={i + 1} creator={c} />)}
-                </ul>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-emerald-50 via-white to-white border-emerald-200/80">
-              <CardContent>
-                <h3 className="text-sm font-700 text-gray-900 inline-flex items-center gap-1.5"><ShieldCheck size={13} className="text-emerald-600" /> Community guidelines</h3>
-                <ul className="mt-3 space-y-1.5 text-[11px] text-gray-600 leading-snug">
-                  <li>• Posts are manually reviewed before publishing. Expect a few minutes delay.</li>
-                  <li>• Keep self-promotion inside your listings / showcase posts — no drive-by service ads.</li>
-                  <li>• Be specific: share a setup, a backtest, a question with context.</li>
-                  <li>• Moderators remove posts that violate the spirit (or the letter).</li>
-                </ul>
-              </CardContent>
-            </Card>
+    <Card>
+      <CardContent>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h2 className="text-sm font-700 text-gray-900 inline-flex items-center gap-1.5">
+            <MessagesSquare size={14} className="text-blue-600" /> Threads
+          </h2>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <NativeSelect value={category} onChange={(e) => setCategory(e.target.value)} className="min-w-0">
+              <option value="">All categories</option>
+              {categories.map((c) => (
+                <option key={c.slug} value={c.slug}>{c.label}</option>
+              ))}
+            </NativeSelect>
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search…"
+              className="flex-1 sm:w-56 sm:flex-initial"
+            />
+            <Button asChild size="sm">
+              <a href={userId ? "/community/new" : "/sign-in?returnTo=/community/new"}>
+                <Plus size={12} /> New thread
+              </a>
+            </Button>
           </div>
         </div>
-      </div>
-    </PublicShell>
+
+        <div className="mt-4">
+          {loading ? (
+            <div className="py-10 text-center text-xs text-gray-400">Loading…</div>
+          ) : posts.length === 0 ? (
+            <EmptyState
+              icon={<MessagesSquare size={18} />}
+              title="No threads yet"
+              description={search || category ? "Try a different filter." : "Be the first to start a topic."}
+              action={
+                <Button asChild size="sm">
+                  <a href={userId ? "/community/new" : "/sign-in?returnTo=/community/new"}>
+                    <Plus size={12} /> New thread
+                  </a>
+                </Button>
+              }
+            />
+          ) : (
+            <ul className="divide-y divide-gray-100">
+              {posts.map((p) => (
+                <PostPreview key={p.id} post={p} categories={categories} />
+              ))}
+            </ul>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
-
-// ── Post preview row ──────────────────────────────────────────────
 
 function PostPreview({ post, categories }: { post: PostWithAuthor; categories: ForumCategory[] }) {
   const cat = categories.find((c) => c.slug === post.category_slug);
@@ -257,39 +293,52 @@ function PostPreview({ post, categories }: { post: PostWithAuthor; categories: F
   );
 }
 
-// ── Feed row ──────────────────────────────────────────────────────
+// ── Sidebar ────────────────────────────────────────────────────────
 
-function FeedRow({ event }: { event: FeedItem }) {
-  const isReview = event.event_type === "review";
+function Sidebar() {
+  const [leaderboard, setLeaderboard] = useState<CreatorStats[]>([]);
+  useEffect(() => { void fetchLeaderboard(10).then(setLeaderboard); }, []);
+
   return (
-    <li className="flex items-start gap-2.5 text-[11px]">
-      <div className={cn(
-        "mt-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0",
-        isReview ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600",
-      )}>
-        {isReview ? <Star size={11} /> : <ShoppingBag size={11} />}
-      </div>
-      <div className="flex-1 min-w-0">
-        <a
-          href={`/marketplace/listing?id=${event.subject_id}`}
-          className="text-gray-800 hover:text-emerald-700 font-600 truncate block"
-        >
-          {isReview ? "New review on " : ""}
-          {event.title}
-        </a>
-        {event.body && <p className="text-[11px] text-gray-500 line-clamp-1">{event.body}</p>}
-        <div className="text-[10px] text-gray-400">{formatRelative(event.event_at)}</div>
-      </div>
-    </li>
+    <div className="space-y-4">
+      <Card>
+        <CardContent>
+          <div className="flex items-center gap-1.5">
+            <Crown size={14} className="text-amber-500" />
+            <h2 className="text-sm font-700 text-gray-900">Top creators</h2>
+          </div>
+          <p className="text-[11px] text-gray-500 mt-0.5">Ranked by trust score — sales, listings, reviews, tenure.</p>
+          <ul className="mt-3 space-y-1">
+            {leaderboard.length === 0 && (
+              <li className="text-[11px] text-gray-400 py-2">No creators yet.</li>
+            )}
+            {leaderboard.map((c, i) => <LeaderRow key={c.user_id} rank={i + 1} creator={c} />)}
+          </ul>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-gradient-to-br from-emerald-50 via-white to-white border-emerald-200/80">
+        <CardContent>
+          <h3 className="text-sm font-700 text-gray-900 inline-flex items-center gap-1.5">
+            <ShieldCheck size={13} className="text-emerald-600" /> Community guidelines
+          </h3>
+          <ul className="mt-3 space-y-1.5 text-[11px] text-gray-600 leading-snug">
+            <li><strong className="text-gray-700">Feed</strong> — setups, screenshots, updates. No spammy launch ads.</li>
+            <li><strong className="text-gray-700">Forum</strong> — threads are reviewed before publishing.</li>
+            <li>Self-promotion belongs inside your marketplace listing or a showcase post.</li>
+            <li>Be specific. Share a strategy, a backtest, a question with context.</li>
+            <li>Moderators remove posts that violate the spirit (or the letter).</li>
+          </ul>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
-
-// ── Leaderboard row ───────────────────────────────────────────────
 
 function LeaderRow({ rank, creator }: { rank: number; creator: CreatorStats }) {
   return (
     <li>
-      <a href={`/creator/${creator.user_id}`} className="group flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 hover:bg-gray-50">
+      <a href={`/creator/${creator.user_id}/`} className="group flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 hover:bg-gray-50">
         <span className={cn(
           "w-5 text-[10px] font-700 text-center tabular-nums",
           rank === 1 ? "text-amber-500" : rank === 2 ? "text-slate-400" : rank === 3 ? "text-orange-600" : "text-gray-400",
@@ -313,16 +362,4 @@ function LeaderRow({ rank, creator }: { rank: number; creator: CreatorStats }) {
       </a>
     </li>
   );
-}
-
-// ── Feed loader ───────────────────────────────────────────────────
-
-async function loadFeed(): Promise<FeedItem[]> {
-  if (!isSupabaseConfigured()) return [];
-  const { data, error } = await getSupabase()
-    .from("community_feed")
-    .select("*")
-    .limit(40);
-  if (error) return [];
-  return ((data ?? []) as unknown) as FeedItem[];
 }
