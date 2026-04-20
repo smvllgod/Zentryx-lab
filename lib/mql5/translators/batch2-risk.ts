@@ -7,14 +7,17 @@ const sid = (id: string) => id.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6);
 
 // ── risk.atrRisk (ATR-based risk with risk%)
 export const translate_risk_atrRisk: Translator = (node) => {
-  const p = node.params as { riskPercent: number; atrPeriod: number; slMultiplier: number };
+  // Canonical key is `atrMultiplier` per the block registry; older
+  // strategies / templates set `slMultiplier` — accept both.
+  const p = node.params as { riskPercent: number; atrPeriod: number; atrMultiplier?: number; slMultiplier?: number };
+  const mulValue = p.atrMultiplier ?? p.slMultiplier ?? 1.5;
   const tag = sid(node.id);
   const h = `hRiskAtr_${tag}`;
   return {
     inputs: [
       { name: `InpArRisk_${tag}`, type: "double", defaultExpr: String(p.riskPercent ?? 1), label: "Risk %" },
       { name: `InpArP_${tag}`, type: "int", defaultExpr: String(p.atrPeriod ?? 14), label: "ATR period (risk)" },
-      { name: `InpArM_${tag}`, type: "double", defaultExpr: String(p.slMultiplier ?? 1.5), label: "SL × ATR" },
+      { name: `InpArM_${tag}`, type: "double", defaultExpr: String(mulValue), label: "ATR multiplier (SL distance)" },
     ],
     indicators: [{ handleVar: h, init: `${h} = iATR(_Symbol, _Period, InpArP_${tag});`, release: `if(${h} != INVALID_HANDLE) IndicatorRelease(${h});` }],
     helpers: [
@@ -30,7 +33,7 @@ export const translate_risk_atrRisk: Translator = (node) => {
    slPriceDistancePips = slDist / ZxPipSize();
 }`,
     },
-    summaryFragments: [`ATR(${p.atrPeriod}) × ${p.slMultiplier} @ ${p.riskPercent}% risk`],
+    summaryFragments: [`ATR(${p.atrPeriod}) × ${mulValue} @ ${p.riskPercent}% risk`],
   };
 };
 

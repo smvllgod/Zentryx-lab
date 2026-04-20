@@ -813,7 +813,10 @@ export function buildEvaluator(graph: StrategyGraph, bars: Bar[], symbol: string
         case "risk.atrRisk": {
           riskPct = (p.riskPercent as number) ?? 1;
           const ap = (p.atrPeriod as number) ?? 14;
-          const mul = (p.slMultiplier as number) ?? 1.5;
+          // Canonical key per the block registry is `atrMultiplier`; earlier
+          // templates set `slMultiplier` — accept both for back-compat with
+          // strategies already saved against the old schema.
+          const mul = (p.atrMultiplier as number) ?? (p.slMultiplier as number) ?? 1.5;
           const a = getAtr(cache, bars, ap);
           atrSlPips = (a[i - 1] * mul) / pipSize;
           break;

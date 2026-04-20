@@ -30,7 +30,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth/context";
 import { getSupabase } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/toast";
-import { NODE_DEFINITIONS } from "@/lib/strategies/nodes";
+import { getAllNodeDefinitions } from "@/lib/strategies/nodes";
 import { executeTool, extractLastAssistantText, type DoneSummary } from "@/lib/ai/tools";
 import { useConfirm } from "@/components/ui/confirm";
 import {
@@ -132,7 +132,12 @@ export function AiPanel({ graph, onGraphReplace, strategyId, onHighlightNode }: 
     if (open) void refreshConversations();
   }, [open, refreshConversations]);
 
-  const nodeTypes = useMemo(() => NODE_DEFINITIONS.map((d) => d.type), []);
+  // Full catalog — legacy 40 + every non-duplicate block from the
+  // modular registry. Previously we only sent the legacy list, so the
+  // AI assistant flagged new trend/confirm/risk/session/news nodes as
+  // "not a valid node type" and tried to rewrite strategies that were
+  // already correct.
+  const nodeTypes = useMemo(() => getAllNodeDefinitions().map((d) => d.type), []);
 
   // ── New chat
   const startNewChat = useCallback(() => {
