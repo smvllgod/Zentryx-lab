@@ -106,6 +106,8 @@ export interface BacktestResult {
   diagnostics: BacktestDiagnostic[];
   /** Wall-clock run time in ms, for UX. */
   runtimeMs: number;
+  /** The bars the simulation ran on (subset of the input within the active range). */
+  bars: Bar[];
 }
 
 export type DiagnosticLevel = "info" | "warning" | "error";

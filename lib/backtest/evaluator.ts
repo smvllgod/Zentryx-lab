@@ -286,27 +286,46 @@ function getWillR(cache: IndicatorCache, bars: Bar[], period: number) {
 
 export type Dir = "long" | "short" | "both";
 
+export interface GridConfig {
+  /** Spacing between grid orders in pips. 0 = no grid. */
+  spacingPips: number;
+  /** Max simultaneous positions (including the initial one). */
+  maxOrders: number;
+  /** Lot multiplier applied to each subsequent order (1 = flat, >1 = martingale). */
+  lotMultiplier: number;
+  /** "against" = classic DD-averaging grid. "with" = anti-grid / pyramid. */
+  direction: "against" | "with";
+}
+
+export interface BasketConfig {
+  /** Close all positions at +$X floating profit. */
+  tpCash?: number;
+  /** Close all positions at -$X floating loss. */
+  slCash?: number;
+  /** Close all at +X% of equity. */
+  tpPct?: number;
+  /** Close all at -X% of equity. */
+  slPct?: number;
+  /** Flatten everything when equity drops X% from peak. */
+  emergencyDdPct?: number;
+}
+
 export interface Signal {
   wantLong: boolean;
   wantShort: boolean;
-  /** Pre-trade gate (news, session, cooldown, etc). If false, no trade opens. */
   gatesOk: boolean;
-  /** SL distance in pips (initial). 0 if the exit blocks don't set one. */
   slPips: number;
-  /** TP distance in pips (initial). 0 if no TP. */
   tpPips: number;
-  /** Lot size to use on entry. 0 → skip trade. */
   lots: number;
-  /** If >0, active break-even trigger in pips. */
   beTriggerPips: number;
-  /** If >0, trailing stop distance in pips. */
   trailDistPips: number;
-  /** Trailing activation — move to trailing only past this many pips in profit. */
   trailActivatePips: number;
-  /** Time-based exit: close after N bars. 0 = disabled. */
   timeExitBars: number;
-  /** End-of-day exit: flatten at hour (0-23). -1 = disabled. */
   eodCutoffHour: number;
+  /** Grid config, populated by grid.* blocks. Absent = no grid. */
+  grid?: GridConfig;
+  /** Basket config, populated by basket.* blocks. Absent = no basket caps. */
+  basket?: BasketConfig;
 }
 
 export interface EvalContext {
@@ -963,6 +982,94 @@ export function buildEvaluator(graph: StrategyGraph, bars: Bar[], symbol: string
     }
     lots = Math.max(0.01, Math.min(10, Math.round(lots * 100) / 100));
 
+    // ── Grid config ───────────────────────────────────────────
+    let grid: GridConfig | undefined;
+    for (const n of byCat.grid ?? []) {
+      const p = n.params as Record<string, unknown>;
+      switch (n.type) {
+        case "grid.basic":
+          grid = {
+            spacingPips: (p.stepPips as number) ?? 30,
+            maxOrders: (p.maxOrders as number) ?? 5,
+            lotMultiplier: (p.lotMultiplier as number) ?? 1,
+            direction: "against",
+          };
+          break;
+        case "grid.atrSpaced": {
+          const ap = (p.atrPeriod as number) ?? 14;
+          const mul = (p.multiplier as number) ?? 1.5;
+          const a = getAtr(cache, bars, ap);
+          grid = {
+            spacingPips: (a[i - 1] * mul) / pipSize,
+            maxOrders: (p.maxOrders as number) ?? 5,
+            lotMultiplier: 1,
+            direction: "against",
+          };
+          break;
+        }
+        case "grid.martingaleGrid":
+          grid = {
+            spacingPips: (p.stepPips as number) ?? 30,
+            maxOrders: (p.maxOrders as number) ?? 4,
+            lotMultiplier: (p.multiplier as number) ?? 1.5,
+            direction: "against",
+          };
+          break;
+        case "grid.antiGrid":
+        case "grid.pyramidGrid":
+          grid = {
+            spacingPips: (p.stepPips as number) ?? 20,
+            maxOrders: 5,
+            lotMultiplier: 1,
+            direction: "with",
+          };
+          break;
+        case "grid.averagingDown":
+          grid = {
+            spacingPips: (p.stepPips as number) ?? 40,
+            maxOrders: 8,
+            lotMultiplier: 1,
+            direction: "against",
+          };
+          break;
+        default:
+          warnUnsupported(n, "grid variant approximated as basic grid");
+      }
+    }
+
+    // ── Basket config ─────────────────────────────────────────
+    let basket: BasketConfig | undefined;
+    for (const n of byCat.utility ?? []) {
+      // Some basket blocks live under the utility category (basket.*).
+      if (!n.type.startsWith("basket.") && !n.type.startsWith("grid.smartClose") && n.type !== "utility.emergencyStop") continue;
+      const p = n.params as Record<string, unknown>;
+      basket ??= {};
+      switch (n.type) {
+        case "basket.totalProfitTarget": basket.tpCash = (p.targetDollars as number) ?? 50; break;
+        case "basket.totalLossStop":     basket.slCash = (p.lossDollars as number) ?? 100; break;
+        case "basket.profitPct":         basket.tpPct  = (p.targetPercent as number) ?? 1; break;
+        case "basket.lossPct":           basket.slPct  = (p.lossPercent as number) ?? 2; break;
+        case "basket.emergencyBasket":   basket.emergencyDdPct = (p.maxDdPercent as number) ?? 5; break;
+        case "grid.smartClose":          basket.tpCash = (p.targetDollars as number) ?? 30; break;
+        case "utility.emergencyStop":
+          if ((p.mode as string) !== "floor") basket.emergencyDdPct = (p.maxDrawdownPercent as number) ?? 10;
+          break;
+      }
+    }
+    // Management category also hosts some basket blocks.
+    for (const n of byCat.management ?? []) {
+      if (!n.type.startsWith("basket.")) continue;
+      const p = n.params as Record<string, unknown>;
+      basket ??= {};
+      switch (n.type) {
+        case "basket.totalProfitTarget": basket.tpCash = (p.targetDollars as number) ?? 50; break;
+        case "basket.totalLossStop":     basket.slCash = (p.lossDollars as number) ?? 100; break;
+        case "basket.profitPct":         basket.tpPct  = (p.targetPercent as number) ?? 1; break;
+        case "basket.lossPct":           basket.slPct  = (p.lossPercent as number) ?? 2; break;
+        case "basket.emergencyBasket":   basket.emergencyDdPct = (p.maxDdPercent as number) ?? 5; break;
+      }
+    }
+
     return {
       wantLong,
       wantShort,
@@ -975,6 +1082,8 @@ export function buildEvaluator(graph: StrategyGraph, bars: Bar[], symbol: string
       trailActivatePips,
       timeExitBars,
       eodCutoffHour,
+      grid,
+      basket,
     };
   }
 

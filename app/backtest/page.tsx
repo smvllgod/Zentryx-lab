@@ -24,12 +24,14 @@ import {
   BUILTIN_SYMBOLS, BUILTIN_TIMEFRAMES, SYMBOL_GROUPS, generateSampleOhlc,
 } from "@/lib/backtest/sample-data";
 import { parseOhlcCsv } from "@/lib/backtest/data";
+import { fetchLiveBars } from "@/lib/backtest/live-data";
 import { EquityChart } from "@/components/backtest/EquityChart";
 import { MetricsGrid } from "@/components/backtest/MetricsGrid";
 import { TradesTable } from "@/components/backtest/TradesTable";
+import { TradingChart } from "@/components/backtest/TradingChart";
 import { cn } from "@/lib/utils/cn";
 
-type DataSource = "sample" | "csv";
+type DataSource = "live" | "sample" | "csv";
 
 export default function BacktestPage() {
   const { user } = useAuth();
@@ -40,7 +42,8 @@ export default function BacktestPage() {
   const [barCount, setBarCount] = useState(2000);
   const [startingBalance, setStartingBalance] = useState(10000);
   const [spreadPoints, setSpreadPoints] = useState(15);
-  const [dataSource, setDataSource] = useState<DataSource>("sample");
+  const [dataSource, setDataSource] = useState<DataSource>("live");
+  const [liveFetching, setLiveFetching] = useState(false);
   const [uploadedBars, setUploadedBars] = useState<Bar[]>([]);
   const [uploadedName, setUploadedName] = useState<string>("");
   const [csvWarnings, setCsvWarnings] = useState<string[]>([]);
@@ -90,9 +93,21 @@ export default function BacktestPage() {
       if (!row) throw new Error("Strategy not found");
       const graph = row.graph as unknown as StrategyGraph;
 
-      const bars = dataSource === "csv"
-        ? uploadedBars
-        : generateSampleOhlc({ symbol, timeframe, bars: barCount });
+      let bars: Bar[];
+      if (dataSource === "csv") {
+        bars = uploadedBars;
+      } else if (dataSource === "live") {
+        setLiveFetching(true);
+        try {
+          const live = await fetchLiveBars({ symbol, timeframe, bars: barCount });
+          bars = live.bars;
+          toast.success(`Loaded ${bars.length} real bars from ${live.source}.`);
+        } finally {
+          setLiveFetching(false);
+        }
+      } else {
+        bars = generateSampleOhlc({ symbol, timeframe, bars: barCount });
+      }
 
       if (bars.length < 50) throw new Error("Not enough bars to backtest (need ≥ 50).");
 
@@ -192,13 +207,23 @@ export default function BacktestPage() {
               <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden text-xs w-full">
                 <button
                   type="button"
-                  onClick={() => setDataSource("sample")}
+                  onClick={() => setDataSource("live")}
                   className={cn(
                     "flex-1 px-3 py-2 font-600 inline-flex items-center justify-center gap-1.5",
+                    dataSource === "live" ? "bg-gray-900 text-white" : "bg-white text-gray-700 hover:bg-gray-50",
+                  )}
+                >
+                  <BarChart3 size={11} /> Live data
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDataSource("sample")}
+                  className={cn(
+                    "flex-1 px-3 py-2 font-600 border-l border-gray-200 inline-flex items-center justify-center gap-1.5",
                     dataSource === "sample" ? "bg-gray-900 text-white" : "bg-white text-gray-700 hover:bg-gray-50",
                   )}
                 >
-                  <Database size={11} /> Demo data
+                  <Database size={11} /> Demo
                 </button>
                 <button
                   type="button"
@@ -208,11 +233,53 @@ export default function BacktestPage() {
                     dataSource === "csv" ? "bg-gray-900 text-white" : "bg-white text-gray-700 hover:bg-gray-50",
                   )}
                 >
-                  <FileUp size={11} /> Upload CSV
+                  <FileUp size={11} /> CSV
                 </button>
               </div>
 
-              {dataSource === "sample" ? (
+              {dataSource === "live" ? (
+                <div className="mt-3 space-y-3">
+                  <div>
+                    <Label htmlFor="bt-lsym">Symbol</Label>
+                    <CustomSelect
+                      id="bt-lsym"
+                      value={symbol}
+                      onChange={setSymbol}
+                      groups={SYMBOL_GROUPS.map((g) => ({
+                        label: g.label,
+                        options: g.symbols.map((s) => ({ value: s, label: s })),
+                      }))}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label htmlFor="bt-ltf">Timeframe</Label>
+                      <CustomSelect
+                        id="bt-ltf"
+                        value={timeframe}
+                        onChange={(v) => setTimeframe(v as Timeframe)}
+                        options={BUILTIN_TIMEFRAMES.map((t) => ({ value: t, label: t }))}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="bt-lbars">Bars</Label>
+                      <Input
+                        id="bt-lbars"
+                        type="number"
+                        min={200}
+                        max={5000}
+                        step={100}
+                        value={barCount}
+                        onChange={(e) => setBarCount(Math.max(200, Math.min(5000, parseInt(e.target.value || "2000", 10))))}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-gray-500 leading-snug">
+                    Fetched live from Yahoo Finance (FX, metals, indices, oil) or Binance (crypto)
+                    via our server proxy. Most recent {barCount.toLocaleString()} bars.
+                  </p>
+                </div>
+              ) : dataSource === "sample" ? (
                 <div className="mt-3 space-y-3">
                   <div>
                     <Label htmlFor="bt-symbol">Symbol</Label>
@@ -390,6 +457,19 @@ export default function BacktestPage() {
                     </Badge>
                   </div>
                   <MetricsGrid m={result.metrics} />
+                </CardContent>
+              </Card>
+
+              {/* Trading chart — candles + trade markers + SL/TP lines */}
+              <Card>
+                <CardContent>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-700 text-gray-900">Trading chart</h3>
+                    <span className="text-[10px] text-gray-400">
+                      {result.trades.length} trade{result.trades.length === 1 ? "" : "s"} plotted
+                    </span>
+                  </div>
+                  <TradingChart bars={result.bars} trades={result.trades} height={420} />
                 </CardContent>
               </Card>
 
