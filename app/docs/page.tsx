@@ -849,10 +849,19 @@ function Mql5Export() {
 //+-----------------------------------------+
 #include <Trade/Trade.mqh>
 
-// ── Inputs (bound to each node's fields)
-input int    InpFast_abc123 = 20;
-input int    InpSlow_abc123 = 50;
-input double InpRiskPercent_def456 = 1.0;
+// ── Inputs: auto-sectioned for a clean MT5 Parameters tab
+input group "━━━ STRATEGY CORE ━━━━━━━━━━━━━━━━━━━━━━━"
+input string          InpSymbolHint    = "EURUSD";
+input ENUM_TIMEFRAMES InpTimeframe     = PERIOD_H1;
+input long            InpMagic         = 20260421;
+input string          InpTradeComment  = "Zentryx Lab";
+
+input group "━━━ ENTRY LOGIC ━━━━━━━━━━━━━━━━━━━━━━━━"
+input int    InpFast_abc123  = 20;   // Fast EMA Period
+input int    InpSlow_abc123  = 50;   // Slow EMA Period
+
+input group "━━━ RISK MANAGEMENT ━━━━━━━━━━━━━━━━━━━━"
+input double InpRiskPct_def  = 1.0;  // Risk (%)
 
 // ── Indicator handles, lifecycle
 int hFast_abc123 = INVALID_HANDLE;
@@ -873,12 +882,33 @@ void OnTick()
 
       <h2 className="mt-14 text-xl font-800 text-gray-900">What&apos;s in the file</h2>
       <ul className="mt-3 space-y-2 max-w-2xl">
-        <Bullet>Input parameters bound to every node&apos;s tunable fields.</Bullet>
+        <Bullet>
+          <strong>Sectioned inputs</strong> — up to 13 collapsible sections
+          (PRODUCT INFO, LICENSE, STRATEGY CORE, ENTRY LOGIC, FILTERS,
+          RISK MANAGEMENT, SL/TP, BE/Partial Close, Trailing Stop,
+          Session/News, Execution Controls, Advanced, Visual Dashboard)
+          with cleaned-up Title-Case labels and consistent unit parens.
+          See <code>docs/mql5-input-presentation.md</code> for the full spec.
+        </Bullet>
+        <Bullet>
+          <strong>Packaging presets</strong> — Protection panel now
+          includes a Packaging section where you pick Professional /
+          Premium Seller / Institutional separator style and fill
+          Product Name / Version / Vendor / Support URL for the
+          PRODUCT INFO section.
+        </Bullet>
         <Bullet>Indicator handles created in <code>OnInit</code> and released in <code>OnDeinit</code>.</Bullet>
         <Bullet>Pre-trade gates (session, spread, ATR, daily loss) short-circuit the tick.</Bullet>
         <Bullet>New-bar gating — entries fire once per bar, not per tick.</Bullet>
         <Bullet>Lot sizing via the Risk node you selected (fixed lot or risk-%).</Bullet>
         <Bullet>Stop-loss / take-profit + trailing / break-even inside a single position-management block.</Bullet>
+        <Bullet>
+          <strong>Runtime dashboard controls</strong> — if you enabled
+          an EA Appearance, the generated file exposes{" "}
+          <code>InpShowDashboard</code>, <code>InpDashboardAnchor</code>,{" "}
+          <code>InpDashboardOffsetX/Y</code> so the on-chart panel can
+          be moved or hidden from MT5 without re-exporting.
+        </Bullet>
       </ul>
     </>
   );

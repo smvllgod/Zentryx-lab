@@ -2,7 +2,7 @@
 
 **Purpose.** This document is the single source of truth for the Zentryx Lab block library: what blocks exist, why they exist, how they're grouped, what users see, how each is gated by plan, and how the engineering team should sequence implementation.
 
-**Scope.** MT5 only. 214 blocks across 20 families. Some families belong on the strategy canvas (trade logic); two families are export / protection / packaging configuration modules and must **not** appear as draggable nodes.
+**Scope.** MT5 only. 216 blocks across 20 families (22 entry blocks after the 2026-04 addition of `entry.candleOpen` + `entry.randomPosition`). Some families belong on the strategy canvas (trade logic); two families are export / protection / packaging configuration modules and must **not** appear as draggable nodes.
 
 **Taxonomy key.**
 
@@ -24,7 +24,7 @@
 
 | #  | Family                                | Surface           | Blocks | V1 picks |
 | -- | ------------------------------------- | ----------------- | ------ | -------- |
-| 1  | Entry Logic                           | canvas            | 22     | 7        |
+| 1  | Entry Logic                           | canvas            | 24     | 9        |
 | 2  | Confirmation Logic                    | canvas            | 12     | 2        |
 | 3  | Trend Filters                         | canvas            | 12     | 2        |
 | 4  | Momentum Filters                      | canvas            | 10     | 2        |
@@ -44,7 +44,7 @@
 | 18 | Utility / Trade Constraints           | canvas            | 12     | 4        |
 | 19 | Strategy Protection / Licensing       | protection-config | 8      | 2 (cfg)  |
 | 20 | Marketplace / Packaging configuration | packaging         | 6      | 2 (cfg)  |
-| —  | **Total**                             | —                 | **214**| **40**   |
+| —  | **Total**                             | —                 | **216**| **42**   |
 
 ---
 
@@ -52,9 +52,9 @@
 
 > Every row below is a real, production-scoped block with a reason to exist. Column headers: **id · name · subcategory · plan · pri · cpx · mt5 · codegen · short description**. Where two blocks look similar, the description makes the boundary explicit.
 
-### 2.1 · Entry Logic  (22 blocks · canvas · affects=entry)
+### 2.1 · Entry Logic  (24 blocks · canvas · affects=entry)
 
-Classic triggers for opening a position. Exactly one entry block is required (V1 enforces this via validator). Subcategories: `crossover`, `breakout`, `reversal`, `zone`, `pattern-trigger`, `composite`.
+Classic triggers for opening a position. Exactly one entry block is required (V1 enforces this via validator). Subcategories: `crossover`, `breakout`, `reversal`, `zone`, `pattern-trigger`, `composite`, `price-action`, `seeder`.
 
 | id                          | name                          | sub       | plan    | pri | cpx           | mt5 | codegen | short                                                                                  |
 | --------------------------- | ----------------------------- | --------- | ------- | --- | ------------- | --- | ------- | -------------------------------------------------------------------------------------- |
@@ -69,6 +69,8 @@ Classic triggers for opening a position. Exactly one entry block is required (V1
 | `entry.donchianBreakout`    | Donchian Breakout             | breakout  | pro     | P1  | intermediate  | Y   | Y       | Close outside N-bar Donchian channel.                                                  |
 | `entry.bollingerBreak`      | Bollinger Breakout            | breakout  | pro     | P1  | intermediate  | Y   | Y       | Close outside Bollinger envelope.                                                      |
 | `entry.previousCandle`      | Previous Candle Break         | breakout  | free    | P1  | basic         | N   | Y       | Break of previous candle high / low.                                                   |
+| `entry.candleOpen`          | Candle Open Follow            | price-action | free | P1  | basic         | N   | Y       | Open in the direction of the just-closed candle on every new bar.                      |
+| `entry.randomPosition`      | Random Position Seeder        | seeder    | pro     | P2  | basic         | N   | Y       | Fires once on load — random / fixed direction seed for grid / martingale systems.      |
 | `entry.nBarBreakout`        | N-Bar High/Low Breakout       | breakout  | pro     | P2  | basic         | N   | Y       | Break of N-bar high / low.                                                             |
 | `entry.atrBreakout`         | ATR Volatility Breakout       | breakout  | pro     | P2  | intermediate  | Y   | Y       | Open ± k·ATR hit.                                                                      |
 | `entry.sessionBreakout`     | Session Range Breakout        | breakout  | creator | P2  | intermediate  | N   | Y       | Break of the prior session (Asia / London / Custom) range.                             |
@@ -406,11 +408,11 @@ Also not canvas. Configures the listing bundle.
 
 ---
 
-## 3 · V1 launch set — 40 blocks
+## 3 · V1 launch set — 42 blocks
 
 Chosen to give buyers *realistic, non-embarrassing* strategies on day one: trend following, breakout, mean reversion, session trading, and structured risk. Everything below is implementable with existing MQL5 primitives and the existing `SectionContribution` compiler — no research-grade blocks.
 
-**Entry (7).** `entry.emaCross`, `entry.smaCross`, `entry.macdCross`, `entry.stochCross`, `entry.previousCandle`, `entry.donchianBreakout`, `entry.bollingerBreak`, `entry.rsiExtreme`.
+**Entry (9).** `entry.emaCross`, `entry.smaCross`, `entry.macdCross`, `entry.stochCross`, `entry.previousCandle`, `entry.candleOpen`, `entry.randomPosition`, `entry.donchianBreakout`, `entry.bollingerBreak`, `entry.rsiExtreme`.
 
 **Confirmation (2).** `confirm.rsiSide`, `confirm.priceAboveMa`, `confirm.minBarsSinceSignal`.
 

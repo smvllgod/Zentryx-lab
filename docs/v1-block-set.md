@@ -1,6 +1,7 @@
 # Zentryx Lab — V1 Block Set
 
-**Status.** Ready to ship. 40 canvas blocks + 2 protection / 2 packaging config modules.
+**Status.** Ready to ship. 42 canvas blocks + 2 protection / 2 packaging config modules.
+**2026-04 addendum.** Two entry blocks added post-launch: `entry.candleOpen` (Candle Open Follow) and `entry.randomPosition` (Random Position Seeder). Both listed below as rows 6a / 6b.
 
 This is the launch-day block library. Every entry below is:
 - Fully metadata-filled (label, summary, long description, user explanation, tags, plan)
@@ -17,6 +18,8 @@ This is the launch-day block library. Every entry below is:
 | 3 | `entry.macdCross`           | Entry        | free    | Full       | Staple momentum trigger.                                      |
 | 4 | `entry.stochCross`          | Entry        | free    | Full       | OB/OS-zoned stochastic cross.                                 |
 | 5 | `entry.previousCandle`      | Entry        | free    | Full       | Cheapest breakout — starter block.                            |
+| 5a| `entry.candleOpen`          | Entry        | free    | Full       | Open in direction of the just-closed candle on every new bar. |
+| 5b| `entry.randomPosition`      | Entry        | pro     | Full       | One-shot random/fixed seed for grid / martingale starters.    |
 | 6 | `entry.rsiExtreme`          | Entry        | free    | Full       | Classic mean-reversion entry.                                 |
 | 7 | `entry.donchianBreakout`    | Entry        | pro     | Full       | Robust trend-breakout baseline.                               |
 | 8 | `entry.bollingerBreak`      | Entry        | pro     | Preview    | Volatility-aware breakout (to promote from preview in Phase C+).|
@@ -80,6 +83,8 @@ This is the launch-day block library. Every entry below is:
 | **Session scalp**    | `previousCandle` + `session` (custom) + `spreadLimit` + `lot.fixed` + `exit.fixedTpSl` + `utility.maxDailyTrades` |
 | **Prop-firm safe**   | Any entry + `dailyRiskBudget` + `maxDailyLoss` + `emergencyStop` + `lot.fromRisk` + `exit.atrBased` |
 | **Pattern-play**     | `priceActionPinbar` + `priceAboveMa` + `fixedRisk` + `exit.rrBased` |
+| **Momentum scalp**   | `entry.candleOpen` (minBody≥5) + `filter.spreadLimit` + `lot.fixed` + `exit.fixedTpSl` |
+| **Grid starter**     | `entry.randomPosition` + `grid.atrSpaced` + `basket.totalProfitTarget` + `lot.martingale` |
 
 ## 4 · What we're NOT shipping in V1 (roadmap)
 
